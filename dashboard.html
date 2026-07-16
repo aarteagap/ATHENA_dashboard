@@ -282,6 +282,20 @@ async function loadDataAndInit(){
 }
 
 function initDashboard(){
+// Functions referenced by inline onclick/onchange HTML attributes must be reachable from the
+// global scope (inline handlers run in global context) — expose them here since they're
+// otherwise local to this function.
+window.closeM=(...a)=>closeM(...a);
+window.ddSetAll=(...a)=>ddSetAll(...a);
+window.ddToggle=(...a)=>ddToggle(...a);
+window.ddLabel=(...a)=>ddLabel(...a);
+window.fcSetAll=(...a)=>fcSetAll(...a);
+window.fcSetMetric=(...a)=>fcSetMetric(...a);
+window.portsSetMetric=(...a)=>portsSetMetric(...a);
+window.renderAirAll=(...a)=>renderAirAll(...a);
+window.renderPMIAll=(...a)=>renderPMIAll(...a);
+window.renderPorts=(...a)=>renderPorts(...a);
+window.renderWeekly=(...a)=>renderWeekly(...a);
 const tabBar=document.getElementById('tabBar');
 const VISIBLE_TABS = USER_ROLE==='supplier' ? TABS.filter(t=>SUPPLIER_TABS.includes(t.id)) : TABS;
 VISIBLE_TABS.forEach((t,i)=>{
