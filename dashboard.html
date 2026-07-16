@@ -189,6 +189,7 @@ table.senasa tr.date-total:hover td,table.senasa tr.grand-total:hover td{backgro
 .addon{display:inline-flex;align-items:center;gap:2px;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;margin-left:4px;}
 .aup{background:#E5F3EA;color:#2E8B57;}.adn{background:#FBE5E1;color:#C0392B;}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 <div id="loginGate" style="position:fixed;inset:0;background:linear-gradient(135deg,#0E2A3D,#163B54);z-index:1000;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;">
@@ -296,6 +297,7 @@ window.renderAirAll=(...a)=>renderAirAll(...a);
 window.renderPMIAll=(...a)=>renderPMIAll(...a);
 window.renderPorts=(...a)=>renderPorts(...a);
 window.renderWeekly=(...a)=>renderWeekly(...a);
+window.downloadEmbarquesExcel=(...a)=>downloadEmbarquesExcel(...a);
 const tabBar=document.getElementById('tabBar');
 const VISIBLE_TABS = USER_ROLE==='supplier' ? TABS.filter(t=>SUPPLIER_TABS.includes(t.id)) : TABS;
 VISIBLE_TABS.forEach((t,i)=>{
@@ -373,16 +375,21 @@ function buildChart(wks,sid,metric){
 function attachChart(sid,wks,metric){
   metric=metric||'fcl';
   const kC=metric==='fcl'?'fcl_conf':'pal_conf',kP=metric==='fcl'?'fcl_proj':'pal_proj',kA=metric==='fcl'?'fcl_addon':'pal_addon';
+  const kAdd=metric==='fcl'?'fcl_add':'pal_add',kExpo=metric==='fcl'?'fcl_expo':'pal_expo',kExadd=metric==='fcl'?'fcl_exadd':'pal_exadd';
   const unitLbl=metric==='fcl'?'FCL':'Pallets';
   const el=document.getElementById(sid);if(!el)return;
   el.querySelectorAll('circle.dlc').forEach(dot=>{
     dot.addEventListener('mouseenter',()=>{
       const i=+dot.dataset.i,w=wks[i];
       const up=(w[kP]+w[kA])>=w[kC];const ac=up?'#2E8B57':'#C0392B';
+      const addLine = w[kAdd]>0?`<div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:3px;background:#2E8B57;flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">ADD</span><b style="font-family:'JetBrains Mono',monospace;">${f1(w[kAdd])} ${unitLbl}</b></div>`:'';
+      const expoLine = w[kExpo]>0?`<div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:3px;background:#7A6FD0;flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">EXPO</span><b style="font-family:'JetBrains Mono',monospace;">${f1(w[kExpo])} ${unitLbl}</b></div>`:'';
+      const exaddLine = w[kExadd]>0?`<div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:3px;background:#C77D1E;flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">EXADD</span><b style="font-family:'JetBrains Mono',monospace;">${f1(w[kExadd])} ${unitLbl}</b></div>`:'';
       ttEl.innerHTML=`<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,.15);">${w.label}</div>
         <div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:50%;background:#2E8FB0;flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">Confirmado</span><b style="font-family:'JetBrains Mono',monospace;">${f1(w[kC])} ${unitLbl}</b></div>
         <div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:50%;background:#E8A33D;flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">Proy. SOP+PRE</span><b style="font-family:'JetBrains Mono',monospace;">${f1(w[kP])} ${unitLbl}</b></div>
-        ${w[kA]>0?`<div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:3px;background:${ac};flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">ADD+EXPO</span><b style="font-family:'JetBrains Mono',monospace;color:${ac};">${up?'▲':'▼'}${f1(w[kA])}</b></div>`:''}
+        ${addLine}${expoLine}${exaddLine}
+        ${w[kA]>0?`<div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:3px;background:${ac};flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">Total ADD+EXADD</span><b style="font-family:'JetBrains Mono',monospace;color:${ac};">${up?'▲':'▼'}${f1(w[kA])}</b></div>`:''}
         <div style="border-top:1px solid rgba(255,255,255,.15);margin-top:6px;padding-top:5px;display:flex;justify-content:space-between;"><span style="opacity:.8">% Ejec.</span><b style="font-family:'JetBrains Mono',monospace;">${w[kP]>0?fp(w[kC]/w[kP]*100):'—'}</b></div>`;
       ttEl.style.opacity='1';
       const rect=el.getBoundingClientRect();
@@ -431,7 +438,7 @@ function bFcast(){
     <div id="fc-kg"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;background:#F0F7FB;border:1px solid #C8DDE8;border-radius:10px;font-size:11px;"><b style="color:var(--sky);">Lógica 6W:</b><span><b>SOP/PRE</b> = proyección base (línea naranja)</span><span style="background:#E5F3EA;border-radius:4px;padding:1px 6px;color:#2E8B57;font-weight:700;font-size:10px;">▲ ADD/EXPO</span>proyección ≥ ejec.<span style="background:#FBE5E1;border-radius:4px;padding:1px 6px;color:#C0392B;font-weight:700;font-size:10px;">▼ ADD/EXPO</span>proyección &lt; ejec.</div>
     <div class="card"><div class="ct">Curva global <span class="sub">hover para detalle</span></div><div id="fc-chart-wrap" style="position:relative;max-width:900px;margin:0 auto;"></div><div style="display:flex;gap:14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);flex-wrap:wrap;"><div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mu);"><svg width="22" height="4"><line x1="0" y1="2" x2="22" y2="2" stroke="#2E8FB0" stroke-width="2.5"/></svg>Confirmado</div><div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mu);"><svg width="22" height="4"><line x1="0" y1="2" x2="22" y2="2" stroke="#E8A33D" stroke-width="2" stroke-dasharray="5 2"/></svg>SOP+PRE</div></div></div>
-    <div class="card"><div class="ct">Desviación Confirmado vs SOP+PRE</div><div class="tbl-wrap"><table class="std"><thead><tr><th>Semana</th><th style="text-align:right">SOP+PRE</th><th style="text-align:right">Total c/ADD+EXPO</th><th style="text-align:right">Confirmado</th><th style="text-align:right">Desviación</th><th>% Ejecución</th></tr></thead><tbody id="fc-dev-body"></tbody></table></div></div>
+    <div class="card"><div class="ct">Desviación Confirmado vs SOP+PRE</div><div class="tbl-wrap"><table class="std"><thead><tr><th>Semana</th><th style="text-align:right">SOP+PRE</th><th style="text-align:right">ADD</th><th style="text-align:right">EXPO</th><th style="text-align:right">EXADD</th><th style="text-align:right">Total c/ADD+EXADD</th><th style="text-align:right">Confirmado</th><th style="text-align:right">Desviación</th><th>% Ejecución</th></tr></thead><tbody id="fc-dev-body"></tbody></table></div></div>
     <div class="sec-title">📊 Proyección vs Ejecución por Modo</div>
     <div class="g2">
       <div class="card"><div class="ct">✈ Aéreo</div><div id="fc-wrap-air" style="position:relative;"></div></div>
@@ -457,18 +464,19 @@ function renderForecast(){
   const wMar=FWKS_MODE['Marítimo'].filter(w=>selPPs.includes(w.wk));
   const wTer=FWKS_MODE['Terrestre'].filter(w=>selPPs.includes(w.wk));
   const kC=fcMetric==='fcl'?'fcl_conf':'pal_conf',kP=fcMetric==='fcl'?'fcl_proj':'pal_proj',kA=fcMetric==='fcl'?'fcl_addon':'pal_addon';
+  const kAdd=fcMetric==='fcl'?'fcl_add':'pal_add',kExpo=fcMetric==='fcl'?'fcl_expo':'pal_expo',kExadd=fcMetric==='fcl'?'fcl_exadd':'pal_exadd';
   const unit=fcMetric==='fcl'?'FCL':'Pallets';
   const totC=wks.reduce((a,w)=>a+w[kC],0),totP=wks.reduce((a,w)=>a+w[kP],0),totA=wks.reduce((a,w)=>a+w[kA],0);
-  document.getElementById('fc-kg').innerHTML=`<div class="kg"><div class="kc" style="--acc:#2E8FB0"><div class="kl">${unit} Confirmado</div><div class="kv">${f1(totC)}<span class="u">${unit}</span></div><div class="kf">${wks.length} semana(s)</div></div><div class="kc" style="--acc:#E8A33D"><div class="kl">Proy. SOP+PRE</div><div class="kv">${f1(totP)}<span class="u">${unit}</span></div></div><div class="kc" style="--acc:#2E8B57"><div class="kl">ADD+EXPO</div><div class="kv">${f1(totA)}<span class="u">${unit}</span></div><div class="kf">adicionales</div></div><div class="kc" style="--acc:#163B54"><div class="kl">Total proyectado</div><div class="kv">${f1(totP+totA)}<span class="u">${unit}</span></div></div></div>`;
+  const totAdd=wks.reduce((a,w)=>a+w[kAdd],0),totExpo=wks.reduce((a,w)=>a+w[kExpo],0),totExadd=wks.reduce((a,w)=>a+w[kExadd],0);
+  document.getElementById('fc-kg').innerHTML=`<div class="kg"><div class="kc" style="--acc:#2E8FB0"><div class="kl">${unit} Confirmado</div><div class="kv">${f1(totC)}<span class="u">${unit}</span></div><div class="kf">${wks.length} semana(s)</div></div><div class="kc" style="--acc:#E8A33D"><div class="kl">Proy. SOP+PRE</div><div class="kv">${f1(totP)}<span class="u">${unit}</span></div></div><div class="kc" style="--acc:#2E8B57"><div class="kl">ADD</div><div class="kv">${f1(totAdd)}<span class="u">${unit}</span></div><div class="kf">adicionales</div></div><div class="kc" style="--acc:#7A6FD0"><div class="kl">EXPO</div><div class="kv">${f1(totExpo)}<span class="u">${unit}</span></div><div class="kf">adicionales</div></div><div class="kc" style="--acc:#C77D1E"><div class="kl">EXADD</div><div class="kv">${f1(totExadd)}<span class="u">${unit}</span></div><div class="kf">adicionales</div></div><div class="kc" style="--acc:#163B54"><div class="kl">Total proyectado</div><div class="kv">${f1(totP+totA)}<span class="u">${unit}</span></div></div></div>`;
   const rows=wks.map(w=>{
     const hasC=w[kC]>0,ej=w[kP]>0?(w[kC]/w[kP]*100):0;
     const cl=hasC?(ej>=90?'ok':ej>=70?'warn':'bad'):'neu';
     const up=(w[kP]+w[kA])>=w[kC];
-    const ab=w[kA]>0?`<span class="addon ${up?'aup':'adn'}">${up?'▲':'▼'}${f1(w[kA])}</span>`:'';
     const dev=hasC?(w[kC]-w[kP]>=0?'+':'')+f1(w[kC]-w[kP]):'—';
-    return`<tr><td style="font-family:'JetBrains Mono',monospace;font-weight:600;">${w.label}</td><td class="num">${f1(w[kP])} ${ab}</td><td class="num">${f1(w[kP]+w[kA])}</td><td class="num" style="color:#2E8FB0;font-weight:600;">${hasC?f1(w[kC]):'—'}</td><td class="num" style="color:${hasC&&w[kC]<w[kP]?'var(--bad)':'var(--ok)'};font-weight:600;">${dev}</td><td><span class="pill ${cl}">${hasC?fp(ej):'Sin ejec.'}</span></td></tr>`;
+    return`<tr><td style="font-family:'JetBrains Mono',monospace;font-weight:600;">${w.label}</td><td class="num">${f1(w[kP])}</td><td class="num">${w[kAdd]>0?f1(w[kAdd]):'—'}</td><td class="num">${w[kExpo]>0?f1(w[kExpo]):'—'}</td><td class="num">${w[kExadd]>0?f1(w[kExadd]):'—'}</td><td class="num">${f1(w[kP]+w[kA])}${w[kA]>0?`<span class="addon ${up?'aup':'adn'}">${up?'▲':'▼'}${f1(w[kA])}</span>`:''}</td><td class="num" style="color:#2E8FB0;font-weight:600;">${hasC?f1(w[kC]):'—'}</td><td class="num" style="color:${hasC&&w[kC]<w[kP]?'var(--bad)':'var(--ok)'};font-weight:600;">${dev}</td><td><span class="pill ${cl}">${hasC?fp(ej):'Sin ejec.'}</span></td></tr>`;
   }).join('');
-  document.getElementById('fc-dev-body').innerHTML=rows||'<tr><td colspan="6" style="text-align:center;color:var(--mu);padding:16px;">Selecciona al menos un Pack Plan</td></tr>';
+  document.getElementById('fc-dev-body').innerHTML=rows||'<tr><td colspan="9" style="text-align:center;color:var(--mu);padding:16px;">Selecciona al menos un Pack Plan</td></tr>';
   document.getElementById('fc-stat').textContent=`${wks.length} de ${FWKS.length} semanas seleccionadas · métrica: ${unit}`;
   if(wks.length>1){
     document.getElementById('fc-chart-wrap').innerHTML=buildChart(wks,'fc-g',fcMetric);
@@ -883,7 +891,10 @@ function bPMI(){
     </div>
     <div class="sec-title">🚦 DISPATCH CONTROL</div>
     <div class="card">
-      <div class="ct">Rondas de despacho <span class="sub" id="emb-stat"></span></div>
+      <div class="ct" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>Rondas de despacho <span class="sub" id="emb-stat"></span></span>
+        <button type="button" class="btn-popup" style="font-size:10.5px;padding:5px 10px;" onclick="downloadEmbarquesExcel()">⬇ Descargar Excel</button>
+      </div>
       <div class="pivot-wrap"><div class="pivot-scroll" style="max-height:560px;"><table class="pivot" style="font-size:10.5px;"><colgroup><col style="width:34px"><col style="width:78px"><col style="width:70px"><col style="width:78px"><col style="width:90px"><col style="width:90px"><col style="width:90px"><col style="width:80px"><col style="width:90px"><col style="width:64px"><col style="width:90px"><col style="width:90px"><col style="width:90px"><col style="width:90px"><col style="width:70px"><col style="width:60px"><col style="width:80px"></colgroup><thead><tr><th>Dispatch Ro.</th><th>Loading Date</th><th>Loading Time</th><th>Positioning Time</th><th>Packing Stage Estim..</th><th>Journey Status BASC</th><th>Packing Stage Load Status</th><th>Instruction</th><th>PO</th><th>Line</th><th>Logistics Operator</th><th>Transport Operator</th><th>Booking|AWB|CRT</th><th>Container</th><th>POD</th><th>Packing</th><th>Gate-In Storage</th></tr></thead><tbody id="emb-body"></tbody></table></div></div>
     </div>
     <div class="sec-title">T.R. PROGRAM</div>
@@ -1002,6 +1013,7 @@ function renderEmbarques(gPK,gPPs,gDD,gMO){
   if(gPPs&&gPPs.length)ft=ft.filter(r=>gPPs.includes(r.pack_plan));
   if(gDD&&gDD.length)ft=ft.filter(r=>gDD.includes(r.dispatch_date||''));
   if(gMO&&gMO.length)ft=ft.filter(r=>gMO.includes(r.mode));
+  LAST_EMBARQUES_FILTERED = ft;
   const rndGroups={};
   ft.forEach(r=>{const rnd=r.round;if(!rndGroups[rnd])rndGroups[rnd]=[];rndGroups[rnd].push(r);});
   const bascCl=b=>b==='FINALIZADO'?'ok':(b&&(b.includes('PACKING')||b.includes('RUTA')))?'warn':b?'bad':'neu';
@@ -1015,6 +1027,25 @@ function renderEmbarques(gPK,gPPs,gDD,gMO){
   });
   document.getElementById('emb-body').innerHTML=html||'<tr><td colspan="16" style="text-align:center;color:var(--mu);padding:16px;">Sin registros para este filtro</td></tr>';
   document.getElementById('emb-stat').textContent=`${rows} filas · ${Object.keys(rndGroups).length} ronda(s)`;
+}
+
+let LAST_EMBARQUES_FILTERED = [];
+function downloadEmbarquesExcel(){
+  if(!LAST_EMBARQUES_FILTERED.length){alert('No hay registros para exportar con el filtro actual.');return;}
+  const rows = LAST_EMBARQUES_FILTERED.map(r=>({
+    'Dispatch Round': r.round, 'Loading Date': r.load_date, 'Loading Time': r.load_time,
+    'Positioning Time': r.postime, 'Packing Stage Estim.': r.pack_est, 'Journey Status BASC': r.basc,
+    'Packing Stage Load Status': r.load_status, 'Instruction': r.instruction, 'PO': r.po,
+    'Line': r.line, 'Logistics Operator': r.log_op, 'Transport Operator': r.transp_op,
+    'Booking|AWB|CRT': r.booking, 'Container': r.container, 'POD': r.pod, 'Packing': r.packing,
+    'Gate-In Storage': r.gatein, 'Pack Plan': r.pack_plan, 'Dispatch Date': r.dispatch_date, 'Mode': r.mode,
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = Object.keys(rows[0]).map(k => ({wch: Math.max(k.length, 14)}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Dispatch Control');
+  const stamp = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `Dispatch_Control_${stamp}.xlsx`);
 }
 
 function renderSenasa(gPK,gPPs,gDD,gMO){
