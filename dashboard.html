@@ -191,6 +191,22 @@ table.senasa tr.date-total:hover td,table.senasa tr.grand-total:hover td{backgro
 </style>
 </head>
 <body>
+<div id="loginGate" style="position:fixed;inset:0;background:linear-gradient(135deg,#0E2A3D,#163B54);z-index:1000;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;">
+  <div style="background:#fff;border-radius:16px;padding:40px 44px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.35);text-align:center;">
+    <div style="width:52px;height:52px;border-radius:12px;background:#2E8FB0;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;margin:0 auto 14px;">A</div>
+    <h1 style="font-size:19px;color:#0E2A3D;margin-bottom:4px;">ATHENA Control Tower</h1>
+    <p style="font-size:12px;color:#6B7280;font-family:'Inter',sans-serif;margin-bottom:26px;">Selecciona tu perfil de acceso</p>
+    <div id="roleButtons" style="display:flex;flex-direction:column;gap:10px;">
+      <button onclick="showPwd('hortifrut')" style="padding:13px;border-radius:10px;border:2px solid #163B54;background:#163B54;color:#fff;font-weight:700;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;letter-spacing:.02em;">🏢 HORTIFRUT — Acceso completo</button>
+      <button onclick="showPwd('supplier')" style="padding:13px;border-radius:10px;border:2px solid #E2DED3;background:#fff;color:#0E2A3D;font-weight:700;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;letter-spacing:.02em;">🚚 SUPPLIER — Acceso Weekly/PMI/Air</button>
+    </div>
+    <div id="pwdBox" style="display:none;margin-top:20px;">
+      <input type="password" id="pwdInput" placeholder="Contraseña" style="width:100%;padding:11px 14px;border-radius:8px;border:1px solid #E2DED3;font-size:13px;font-family:'Inter',sans-serif;margin-bottom:10px;box-sizing:border-box;">
+      <div id="pwdErr" style="display:none;color:#C0392B;font-size:11px;margin-bottom:10px;font-family:'Inter',sans-serif;">Contraseña incorrecta</div>
+      <button onclick="tryLogin()" style="width:100%;padding:11px;border-radius:8px;border:none;background:#2E8FB0;color:#fff;font-weight:700;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;">Ingresar</button>
+    </div>
+  </div>
+</div>
 <div class="topbar">
   <div class="ti">
     <div class="brand"><div class="bm">A</div><div><h1>ATHENA Control Tower</h1><p>HORIZON_FORECAST_2627 · Exportación Multimodal</p></div></div>
@@ -207,6 +223,34 @@ table.senasa tr.date-total:hover td,table.senasa tr.grand-total:hover td{backgro
 <main id="main"></main>
 <div class="tt" id="tt"></div>
 <script>
+// ── LOGIN GATE ──────────────────────────────────────────────
+// NOTE: this is a client-side gate for convenience (separating internal vs.
+// supplier views), NOT real security — anyone can read these values from the
+// page source. Don't use it to protect sensitive/confidential data.
+const ATHENA_PASSWORDS = { hortifrut: 'hortifrut2026', supplier: 'proveedor2026' };
+const SUPPLIER_TABS = ['weekly', 'pmi', 'air'];
+let USER_ROLE = null, pendingRole = null;
+
+function showPwd(role) {
+  pendingRole = role;
+  document.getElementById('pwdBox').style.display = 'block';
+  document.getElementById('pwdErr').style.display = 'none';
+  document.getElementById('pwdInput').value = '';
+  document.getElementById('pwdInput').focus();
+}
+function tryLogin() {
+  const val = document.getElementById('pwdInput').value;
+  if (val === ATHENA_PASSWORDS[pendingRole]) {
+    USER_ROLE = pendingRole;
+    document.getElementById('loginGate').style.display = 'none';
+    loadDataAndInit();
+  } else {
+    document.getElementById('pwdErr').style.display = 'block';
+  }
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('pwdBox').style.display === 'block') tryLogin();
+});
 // ── SENASA DATA (151 confirmed rows with inspector) ───────────
 
 // Weekly rows (all confirmed modes)
@@ -224,15 +268,6 @@ const TABS=[
   {id:'kpi',     ix:'07',label:'KPI Tracker'},
   {id:'rutas',   ix:'08',label:'Destinos & Rutas'},
 ];
-const tabBar=document.getElementById('tabBar');
-TABS.forEach((t,i)=>{
-  const b=document.createElement('button');
-  b.className='tb'+(i===0?' active':'');
-  b.dataset.tab=t.id;
-  b.innerHTML=`<span class="ix">${t.ix}</span>${t.label}`;
-  b.onclick=()=>sw(t.id);
-  tabBar.appendChild(b);
-});
 function sw(id){
   document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));
   document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='p-'+id));
@@ -245,9 +280,18 @@ async function loadDataAndInit(){
   ({SENASA,WROWS,AIR,AIRLINES,FWKS,WKL,KPI,EX,DEST,LINEAS,PMI_PORTS,FWKS_MODE,EMBARQUES,TR_PROGRAM,PORTS_RAW} = d);
   initDashboard();
 }
-loadDataAndInit();
 
 function initDashboard(){
+const tabBar=document.getElementById('tabBar');
+const VISIBLE_TABS = USER_ROLE==='supplier' ? TABS.filter(t=>SUPPLIER_TABS.includes(t.id)) : TABS;
+VISIBLE_TABS.forEach((t,i)=>{
+  const b=document.createElement('button');
+  b.className='tb'+(i===0?' active':'');
+  b.dataset.tab=t.id;
+  b.innerHTML=`<span class="ix">${t.ix}</span>${t.label}`;
+  b.onclick=()=>sw(t.id);
+  tabBar.appendChild(b);
+});
 const main=document.getElementById('main'),ttEl=document.getElementById('tt');
 const f1=n=>(+n||0).toLocaleString('es-PE',{minimumFractionDigits:1,maximumFractionDigits:1});
 const fp=n=>f1(n)+'%';
@@ -1113,7 +1157,9 @@ function bRutas(){
   </section>`);
 }
 
-bFcast();bPorts();bWeekly();bPMI();bAir();bExec();bKPI();bRutas();
+const BUILDERS = {forecast:bFcast, ports:bPorts, weekly:bWeekly, pmi:bPMI, air:bAir, execute:bExec, kpi:bKPI, rutas:bRutas};
+VISIBLE_TABS.forEach(t => BUILDERS[t.id]());
+if (VISIBLE_TABS.length) sw(VISIBLE_TABS[0].id);
 
 }
 </script>
