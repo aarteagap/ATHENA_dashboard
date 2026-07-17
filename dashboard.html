@@ -1206,14 +1206,12 @@ function bRutas(){
 
 function bUpload(){
   main.insertAdjacentHTML('beforeend',`<section class="panel" id="p-upload">
-    <div class="ph"><div class="ey">09 · Administración</div><div class="pt">Actualizar Datos</div><div class="ps">Sube el Excel más reciente para actualizar el dashboard directamente — sin pasos intermedios.</div></div>
+    <div class="ph"><div class="ey">09 · Administración</div><div class="pt">Actualizar Datos</div><div class="ps">Sube el Excel más reciente para actualizar el dashboard directamente.</div></div>
     <div class="card" style="max-width:560px;">
       <div class="ct">Subir HORIZON_FORECAST_2627_V1.xlsm</div>
-      <p style="font-size:11.5px;color:var(--mu);margin-bottom:14px;line-height:1.5;">
-        Selecciona el archivo Excel actualizado. Al confirmar, se procesa y se publica directo en GitHub —
-        el dashboard se actualizará para todo el equipo en unos segundos (puede tardar hasta 1 minuto la
-        primera vez, mientras el servidor "despierta").
-      </p>
+      <label style="display:block;font-size:11px;font-weight:600;color:var(--mu);margin-bottom:4px;">Tu nombre (para el registro)</label>
+      <input type="text" id="upl-name" placeholder="Ej. André Arteaga" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--line);font-size:12.5px;margin-bottom:14px;box-sizing:border-box;font-family:inherit;">
+      <label style="display:block;font-size:11px;font-weight:600;color:var(--mu);margin-bottom:4px;">Archivo Excel</label>
       <input type="file" id="upl-file" accept=".xlsm,.xlsx" style="display:block;margin-bottom:14px;font-size:12px;">
       <button type="button" class="btn-popup" id="upl-btn" style="font-size:12px;padding:9px 18px;font-weight:700;" onclick="doUpload()">⬆ Procesar y Publicar</button>
       <div id="upl-status" style="margin-top:14px;font-size:12px;line-height:1.6;"></div>
@@ -1222,17 +1220,21 @@ function bUpload(){
 }
 
 const UPLOAD_API = 'https://athena-api-pxm7.onrender.com/publish';
-const UPLOAD_API_KEY = 'hz-9f83jd83md-secret';
+const UPLOAD_API_KEY = 'CAMBIA_ESTA_CLAVE_POR_TU_API_KEY_DE_RENDER';
 function doUpload(){
+  const nameEl=document.getElementById('upl-name');
   const inp=document.getElementById('upl-file');
   const statusEl=document.getElementById('upl-status');
   const btn=document.getElementById('upl-btn');
+  const name=nameEl.value.trim();
+  if(!name){statusEl.innerHTML='<span style="color:var(--bad);">Escribe tu nombre antes de publicar.</span>';return;}
   if(!inp.files.length){statusEl.innerHTML='<span style="color:var(--bad);">Selecciona un archivo primero.</span>';return;}
   const file=inp.files[0];
   btn.disabled=true;btn.textContent='⏳ Procesando… (puede tardar ~1 min)';
   statusEl.innerHTML='<span style="color:var(--mu);">Subiendo y procesando el Excel, por favor espera…</span>';
   const fd=new FormData();
   fd.append('file',file);
+  fd.append('updater_name',name);
   fetch(UPLOAD_API,{method:'POST',headers:{'X-API-Key':UPLOAD_API_KEY},body:fd})
     .then(r=>r.json().then(data=>({ok:r.ok,data})))
     .then(({ok,data})=>{
@@ -1241,7 +1243,7 @@ function doUpload(){
         statusEl.innerHTML=`<span style="color:var(--bad);">❌ Error: ${data.error||'algo salió mal'}</span>`;
         return;
       }
-      statusEl.innerHTML=`<span style="color:var(--ok);">✅ Publicado correctamente (commit ${(data.commit_sha||'').slice(0,7)}). Refresca la página para ver los datos nuevos.</span>`;
+      statusEl.innerHTML=`<span style="color:var(--ok);">✅ Publicado por ${data.updated_by} (commit ${(data.commit_sha||'').slice(0,7)}). Refresca la página para ver los datos nuevos.</span>`;
     })
     .catch(err=>{
       btn.disabled=false;btn.textContent='⬆ Procesar y Publicar';
