@@ -389,6 +389,7 @@ function attachChart(sid,wks,metric){
   metric=metric||'fcl';
   const kC=metric==='fcl'?'fcl_conf':'pal_conf',kP=metric==='fcl'?'fcl_proj':'pal_proj',kA=metric==='fcl'?'fcl_addon':'pal_addon';
   const kAdd=metric==='fcl'?'fcl_add':'pal_add',kExpo=metric==='fcl'?'fcl_expo':'pal_expo',kExadd=metric==='fcl'?'fcl_exadd':'pal_exadd';
+  const kCanc=metric==='fcl'?'fcl_cancelado':'pal_cancelado';
   const unitLbl=metric==='fcl'?'FCL':'Pallets';
   const el=document.getElementById(sid);if(!el)return;
   el.querySelectorAll('circle.dlc').forEach(dot=>{
@@ -398,10 +399,11 @@ function attachChart(sid,wks,metric){
       const addLine = w[kAdd]>0?`<div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:3px;background:#2E8B57;flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">ADD</span><b style="font-family:'JetBrains Mono',monospace;">${f1(w[kAdd])} ${unitLbl}</b></div>`:'';
       const expoLine = w[kExpo]>0?`<div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:3px;background:#7A6FD0;flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">EXPO</span><b style="font-family:'JetBrains Mono',monospace;">${f1(w[kExpo])} ${unitLbl}</b></div>`:'';
       const exaddLine = w[kExadd]>0?`<div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:3px;background:#C77D1E;flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">EXADD</span><b style="font-family:'JetBrains Mono',monospace;">${f1(w[kExadd])} ${unitLbl}</b></div>`:'';
+      const cancLine = w[kCanc]>0?`<div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:3px;background:#C0392B;flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">Cancelados</span><b style="font-family:'JetBrains Mono',monospace;color:#C0392B;">${f1(w[kCanc])} ${unitLbl}</b></div>`:'';
       ttEl.innerHTML=`<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,.15);">${w.label}</div>
-        <div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:50%;background:#2E8FB0;flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">Confirmado</span><b style="font-family:'JetBrains Mono',monospace;">${f1(w[kC])} ${unitLbl}</b></div>
         <div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:50%;background:#E8A33D;flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">Proyección</span><b style="font-family:'JetBrains Mono',monospace;">${f1(w[kP])} ${unitLbl}</b></div>
-        ${addLine}${expoLine}${exaddLine}
+        <div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:50%;background:#2E8FB0;flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">Confirmado</span><b style="font-family:'JetBrains Mono',monospace;">${f1(w[kC])} ${unitLbl}</b></div>
+        ${addLine}${expoLine}${exaddLine}${cancLine}
         ${w[kA]>0?`<div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:3px;background:${ac};flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">Total ADD+EXADD</span><b style="font-family:'JetBrains Mono',monospace;color:${ac};">${up?'▲':'▼'}${f1(w[kA])}</b></div>`:''}
         <div style="border-top:1px solid rgba(255,255,255,.15);margin-top:6px;padding-top:5px;display:flex;justify-content:space-between;"><span style="opacity:.8">% Ejec.</span><b style="font-family:'JetBrains Mono',monospace;">${w[kP]>0?fp(w[kC]/w[kP]*100):'—'}</b></div>`;
       ttEl.style.opacity='1';
@@ -449,7 +451,7 @@ function bFcast(){
       </div>
     </div>
     <div id="fc-kg"></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;background:#F0F7FB;border:1px solid #C8DDE8;border-radius:10px;font-size:11px;"><b style="color:var(--sky);">Lógica 6W:</b><span><b>SOP/PRE</b> = proyección base (línea naranja)</span><span style="background:#E5F3EA;border-radius:4px;padding:1px 6px;color:#2E8B57;font-weight:700;font-size:10px;">▲ ADD/EXPO</span>proyección ≥ ejec.<span style="background:#FBE5E1;border-radius:4px;padding:1px 6px;color:#C0392B;font-weight:700;font-size:10px;">▼ ADD/EXPO</span>proyección &lt; ejec.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;background:#F0F7FB;border:1px solid #C8DDE8;border-radius:10px;font-size:11px;"><b style="color:var(--sky);">Lógica 6W:</b><span><b>PRE</b> (o Status Confirmado/Cancelado) = proyección base (línea naranja)</span><span style="background:#E5F3EA;border-radius:4px;padding:1px 6px;color:#2E8B57;font-weight:700;font-size:10px;">▲ ADD/EXADD</span>proyección ≥ ejec.<span style="background:#FBE5E1;border-radius:4px;padding:1px 6px;color:#C0392B;font-weight:700;font-size:10px;">▼ ADD/EXADD</span>proyección &lt; ejec.</div>
     <div class="card"><div class="ct">Curva global <span class="sub">hover para detalle</span></div><div id="fc-chart-wrap" style="position:relative;max-width:900px;margin:0 auto;"></div><div style="display:flex;gap:14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);flex-wrap:wrap;"><div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mu);"><svg width="22" height="4"><line x1="0" y1="2" x2="22" y2="2" stroke="#2E8FB0" stroke-width="2.5"/></svg>Confirmado</div><div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mu);"><svg width="22" height="4"><line x1="0" y1="2" x2="22" y2="2" stroke="#E8A33D" stroke-width="2" stroke-dasharray="5 2"/></svg>Proyección</div></div></div>
     <div class="card"><div class="ct">Desviación Confirmado vs Proyección</div><div class="tbl-wrap"><table class="std"><thead><tr><th>Semana</th><th style="text-align:right">Proyección</th><th style="text-align:right">ADD</th><th style="text-align:right">EXPO</th><th style="text-align:right">EXADD</th><th style="text-align:right">Total c/ADD+EXADD</th><th style="text-align:right">Confirmado</th><th style="text-align:right">Desviación</th><th>% Ejecución</th></tr></thead><tbody id="fc-dev-body"></tbody></table></div></div>
     <div class="sec-title">📊 Proyección vs Ejecución por Modo</div>
@@ -1232,7 +1234,7 @@ function bUpload(){
 }
 
 const UPLOAD_API = 'https://athena-api-pxm7.onrender.com/publish';
-const UPLOAD_API_KEY = 'hz-9f83jd83md-secret';
+const UPLOAD_API_KEY = 'CAMBIA_ESTA_CLAVE_POR_TU_API_KEY_DE_RENDER';
 function doUpload(){
   const nameEl=document.getElementById('upl-name');
   const inp=document.getElementById('upl-file');
