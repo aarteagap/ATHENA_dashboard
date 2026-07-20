@@ -1231,7 +1231,7 @@ function bUpload(){
 }
 
 const UPLOAD_API = 'https://athena-api-pxm7.onrender.com/publish';
-const UPLOAD_API_KEY = 'hz-9f83jd83md-secret';
+const UPLOAD_API_KEY = 'CAMBIA_ESTA_CLAVE_POR_TU_API_KEY_DE_RENDER';
 function doUpload(){
   const nameEl=document.getElementById('upl-name');
   const inp=document.getElementById('upl-file');
@@ -1263,7 +1263,13 @@ function doUpload(){
 }
 
 const BUILDERS = {forecast:bFcast, ports:bPorts, weekly:bWeekly, pmi:bPMI, air:bAir, execute:bExec, kpi:bKPI, rutas:bRutas, upload:bUpload};
-VISIBLE_TABS.forEach(t => BUILDERS[t.id]());
+VISIBLE_TABS.forEach(t => {
+  try { BUILDERS[t.id](); }
+  catch(e) {
+    console.error(`Error building tab "${t.id}":`, e);
+    main.insertAdjacentHTML('beforeend', `<section class="panel" id="p-${t.id}"><div class="ph"><div class="pt">${t.label}</div></div><div class="card" style="color:var(--bad);">⚠️ No se pudo cargar esta sección (${e.message}). Si acabas de configurar Supabase, sube un Excel desde "Actualizar Datos" para poblar los datos.</div></section>`);
+  }
+});
 if (VISIBLE_TABS.length) sw(VISIBLE_TABS[0].id);
 
 }
