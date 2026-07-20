@@ -400,7 +400,7 @@ function attachChart(sid,wks,metric){
       const exaddLine = w[kExadd]>0?`<div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:3px;background:#C77D1E;flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">EXADD</span><b style="font-family:'JetBrains Mono',monospace;">${f1(w[kExadd])} ${unitLbl}</b></div>`:'';
       ttEl.innerHTML=`<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,.15);">${w.label}</div>
         <div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:50%;background:#2E8FB0;flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">Confirmado</span><b style="font-family:'JetBrains Mono',monospace;">${f1(w[kC])} ${unitLbl}</b></div>
-        <div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:50%;background:#E8A33D;flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">Proy. SOP+PRE</span><b style="font-family:'JetBrains Mono',monospace;">${f1(w[kP])} ${unitLbl}</b></div>
+        <div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:50%;background:#E8A33D;flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">Proyección</span><b style="font-family:'JetBrains Mono',monospace;">${f1(w[kP])} ${unitLbl}</b></div>
         ${addLine}${expoLine}${exaddLine}
         ${w[kA]>0?`<div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:3px;background:${ac};flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">Total ADD+EXADD</span><b style="font-family:'JetBrains Mono',monospace;color:${ac};">${up?'▲':'▼'}${f1(w[kA])}</b></div>`:''}
         <div style="border-top:1px solid rgba(255,255,255,.15);margin-top:6px;padding-top:5px;display:flex;justify-content:space-between;"><span style="opacity:.8">% Ejec.</span><b style="font-family:'JetBrains Mono',monospace;">${w[kP]>0?fp(w[kC]/w[kP]*100):'—'}</b></div>`;
@@ -427,7 +427,7 @@ function fcSetMetric(m){
 function bFcast(){
   const allPPs=FWKS.map(w=>w.wk);
   main.insertAdjacentHTML('beforeend',`<section class="panel active" id="p-forecast">
-    <div class="ph"><div class="ey">01 · Proyección vs ejecución</div><div class="pt">Forecast — Pack Plan S20→S32</div><div class="ps">Azul = Confirmado · Naranja punteada = SOP+PRE · badge ▲/▼ = ADD+EXPO · Hover para detalle.</div></div>
+    <div class="ph"><div class="ey">01 · Proyección vs ejecución</div><div class="pt">Forecast — Pack Plan S20→S32</div><div class="ps">Azul = Confirmado · Naranja punteada = Proyección (PRE + Conf/Canc) · badge ▲/▼ = ADD+EXADD · Hover para detalle.</div></div>
     <div class="card" style="margin-bottom:14px;">
       <div class="ct">Filtro global <span class="sub" id="fc-stat"></span></div>
       <div class="filter-bar" style="align-items:flex-start;">
@@ -450,8 +450,8 @@ function bFcast(){
     </div>
     <div id="fc-kg"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;background:#F0F7FB;border:1px solid #C8DDE8;border-radius:10px;font-size:11px;"><b style="color:var(--sky);">Lógica 6W:</b><span><b>SOP/PRE</b> = proyección base (línea naranja)</span><span style="background:#E5F3EA;border-radius:4px;padding:1px 6px;color:#2E8B57;font-weight:700;font-size:10px;">▲ ADD/EXPO</span>proyección ≥ ejec.<span style="background:#FBE5E1;border-radius:4px;padding:1px 6px;color:#C0392B;font-weight:700;font-size:10px;">▼ ADD/EXPO</span>proyección &lt; ejec.</div>
-    <div class="card"><div class="ct">Curva global <span class="sub">hover para detalle</span></div><div id="fc-chart-wrap" style="position:relative;max-width:900px;margin:0 auto;"></div><div style="display:flex;gap:14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);flex-wrap:wrap;"><div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mu);"><svg width="22" height="4"><line x1="0" y1="2" x2="22" y2="2" stroke="#2E8FB0" stroke-width="2.5"/></svg>Confirmado</div><div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mu);"><svg width="22" height="4"><line x1="0" y1="2" x2="22" y2="2" stroke="#E8A33D" stroke-width="2" stroke-dasharray="5 2"/></svg>SOP+PRE</div></div></div>
-    <div class="card"><div class="ct">Desviación Confirmado vs SOP+PRE</div><div class="tbl-wrap"><table class="std"><thead><tr><th>Semana</th><th style="text-align:right">SOP+PRE</th><th style="text-align:right">ADD</th><th style="text-align:right">EXPO</th><th style="text-align:right">EXADD</th><th style="text-align:right">Total c/ADD+EXADD</th><th style="text-align:right">Confirmado</th><th style="text-align:right">Desviación</th><th>% Ejecución</th></tr></thead><tbody id="fc-dev-body"></tbody></table></div></div>
+    <div class="card"><div class="ct">Curva global <span class="sub">hover para detalle</span></div><div id="fc-chart-wrap" style="position:relative;max-width:900px;margin:0 auto;"></div><div style="display:flex;gap:14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);flex-wrap:wrap;"><div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mu);"><svg width="22" height="4"><line x1="0" y1="2" x2="22" y2="2" stroke="#2E8FB0" stroke-width="2.5"/></svg>Confirmado</div><div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mu);"><svg width="22" height="4"><line x1="0" y1="2" x2="22" y2="2" stroke="#E8A33D" stroke-width="2" stroke-dasharray="5 2"/></svg>Proyección</div></div></div>
+    <div class="card"><div class="ct">Desviación Confirmado vs Proyección</div><div class="tbl-wrap"><table class="std"><thead><tr><th>Semana</th><th style="text-align:right">Proyección</th><th style="text-align:right">ADD</th><th style="text-align:right">EXPO</th><th style="text-align:right">EXADD</th><th style="text-align:right">Total c/ADD+EXADD</th><th style="text-align:right">Confirmado</th><th style="text-align:right">Desviación</th><th>% Ejecución</th></tr></thead><tbody id="fc-dev-body"></tbody></table></div></div>
     <div class="sec-title">📊 Proyección vs Ejecución por Modo</div>
     <div class="g2">
       <div class="card"><div class="ct">✈ Aéreo</div><div id="fc-wrap-air" style="position:relative;"></div></div>
@@ -478,10 +478,11 @@ function renderForecast(){
   const wTer=FWKS_MODE['Terrestre'].filter(w=>selPPs.includes(w.wk));
   const kC=fcMetric==='fcl'?'fcl_conf':'pal_conf',kP=fcMetric==='fcl'?'fcl_proj':'pal_proj',kA=fcMetric==='fcl'?'fcl_addon':'pal_addon';
   const kAdd=fcMetric==='fcl'?'fcl_add':'pal_add',kExpo=fcMetric==='fcl'?'fcl_expo':'pal_expo',kExadd=fcMetric==='fcl'?'fcl_exadd':'pal_exadd';
+  const kAirAdd=fcMetric==='fcl'?'fcl_airadd':'pal_airadd';
   const unit=fcMetric==='fcl'?'FCL':'Pallets';
   const totC=wks.reduce((a,w)=>a+w[kC],0),totP=wks.reduce((a,w)=>a+w[kP],0),totA=wks.reduce((a,w)=>a+w[kA],0);
-  const totAdd=wks.reduce((a,w)=>a+w[kAdd],0),totExpo=wks.reduce((a,w)=>a+w[kExpo],0),totExadd=wks.reduce((a,w)=>a+w[kExadd],0);
-  document.getElementById('fc-kg').innerHTML=`<div class="kg"><div class="kc" style="--acc:#2E8FB0"><div class="kl">${unit} Confirmado</div><div class="kv">${f1(totC)}<span class="u">${unit}</span></div><div class="kf">${wks.length} semana(s)</div></div><div class="kc" style="--acc:#E8A33D"><div class="kl">Proy. SOP+PRE</div><div class="kv">${f1(totP)}<span class="u">${unit}</span></div></div><div class="kc" style="--acc:#2E8B57"><div class="kl">ADD</div><div class="kv">${f1(totAdd)}<span class="u">${unit}</span></div><div class="kf">adicionales</div></div><div class="kc" style="--acc:#7A6FD0"><div class="kl">EXPO</div><div class="kv">${f1(totExpo)}<span class="u">${unit}</span></div><div class="kf">adicionales</div></div><div class="kc" style="--acc:#C77D1E"><div class="kl">EXADD</div><div class="kv">${f1(totExadd)}<span class="u">${unit}</span></div><div class="kf">adicionales</div></div><div class="kc" style="--acc:#163B54"><div class="kl">Total proyectado</div><div class="kv">${f1(totP+totA)}<span class="u">${unit}</span></div></div></div>`;
+  const totAdd=wks.reduce((a,w)=>a+w[kAdd],0),totExpo=wks.reduce((a,w)=>a+w[kExpo],0),totExadd=wks.reduce((a,w)=>a+w[kExadd],0),totAirAdd=wks.reduce((a,w)=>a+w[kAirAdd],0);
+  document.getElementById('fc-kg').innerHTML=`<div class="kg"><div class="kc" style="--acc:#2E8FB0"><div class="kl">${unit} Confirmado</div><div class="kv">${f1(totC)}<span class="u">${unit}</span></div><div class="kf">${wks.length} semana(s)</div></div><div class="kc" style="--acc:#E8A33D"><div class="kl">AIRADD</div><div class="kv">${f1(totAirAdd)}<span class="u">${unit}</span></div><div class="kf">adicionales</div></div><div class="kc" style="--acc:#2E8B57"><div class="kl">ADD</div><div class="kv">${f1(totAdd)}<span class="u">${unit}</span></div><div class="kf">adicionales</div></div><div class="kc" style="--acc:#7A6FD0"><div class="kl">EXPO</div><div class="kv">${f1(totExpo)}<span class="u">${unit}</span></div><div class="kf">adicionales</div></div><div class="kc" style="--acc:#C77D1E"><div class="kl">EXADD</div><div class="kv">${f1(totExadd)}<span class="u">${unit}</span></div><div class="kf">adicionales</div></div><div class="kc" style="--acc:#163B54"><div class="kl">Total proyectado</div><div class="kv">${f1(totP+totA)}<span class="u">${unit}</span></div></div></div>`;
   const rows=wks.map(w=>{
     const hasC=w[kC]>0,ej=w[kP]>0?(w[kC]/w[kP]*100):0;
     const cl=hasC?(ej>=90?'ok':ej>=70?'warn':'bad'):'neu';
@@ -1231,7 +1232,7 @@ function bUpload(){
 }
 
 const UPLOAD_API = 'https://athena-api-pxm7.onrender.com/publish';
-const UPLOAD_API_KEY = 'hz-9f83jd83md-secret';
+const UPLOAD_API_KEY = 'CAMBIA_ESTA_CLAVE_POR_TU_API_KEY_DE_RENDER';
 function doUpload(){
   const nameEl=document.getElementById('upl-name');
   const inp=document.getElementById('upl-file');
