@@ -232,9 +232,10 @@ const SUPPLIER_TABS = ['weekly', 'pmi', 'air'];
 let USER_ROLE = null;
 
 async function tryLogin() {
+  const errEl = document.getElementById('loginErr'), btn = document.getElementById('loginBtn');
+  if (btn.disabled) return; // already logging in — ignore duplicate triggers (Enter + click race)
   const email = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPwd').value;
-  const errEl = document.getElementById('loginErr'), btn = document.getElementById('loginBtn');
   errEl.style.display = 'none';
   if (!email || !password) { errEl.textContent = 'Ingresa tu correo y contraseña.'; errEl.style.display = 'block'; return; }
   btn.disabled = true; btn.textContent = 'Ingresando…';
@@ -295,6 +296,8 @@ async function loadDataAndInit(){
 }
 
 function initDashboard(){
+document.getElementById('tabBar').innerHTML='';
+document.getElementById('main').innerHTML='';
 // Functions referenced by inline onclick/onchange HTML attributes must be reachable from the
 // global scope (inline handlers run in global context) — expose them here since they're
 // otherwise local to this function.
@@ -1234,7 +1237,7 @@ function bUpload(){
 }
 
 const UPLOAD_API = 'https://athena-api-pxm7.onrender.com/publish';
-const UPLOAD_API_KEY = 'hz-9f83jd83md-secret';
+const UPLOAD_API_KEY = 'CAMBIA_ESTA_CLAVE_POR_TU_API_KEY_DE_RENDER';
 function doUpload(){
   const nameEl=document.getElementById('upl-name');
   const inp=document.getElementById('upl-file');
