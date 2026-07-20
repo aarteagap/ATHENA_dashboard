@@ -190,22 +190,18 @@ table.senasa tr.date-total:hover td,table.senasa tr.grand-total:hover td{backgro
 .aup{background:#E5F3EA;color:#2E8B57;}.adn{background:#FBE5E1;color:#C0392B;}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
 <div id="loginGate" style="position:fixed;inset:0;background:linear-gradient(135deg,#0E2A3D,#163B54);z-index:1000;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;">
-  <div style="background:#fff;border-radius:16px;padding:40px 44px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.35);text-align:center;">
+  <div style="background:#fff;border-radius:16px;padding:40px 44px;max-width:380px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.35);text-align:center;">
     <div style="width:52px;height:52px;border-radius:12px;background:#2E8FB0;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;margin:0 auto 14px;">A</div>
     <h1 style="font-size:19px;color:#0E2A3D;margin-bottom:4px;">ATHENA Control Tower</h1>
-    <p style="font-size:12px;color:#6B7280;font-family:'Inter',sans-serif;margin-bottom:26px;">Selecciona tu perfil de acceso</p>
-    <div id="roleButtons" style="display:flex;flex-direction:column;gap:10px;">
-      <button onclick="showPwd('hortifrut')" style="padding:13px;border-radius:10px;border:2px solid #163B54;background:#163B54;color:#fff;font-weight:700;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;letter-spacing:.02em;">🏢 HORTIFRUT</button>
-      <button onclick="showPwd('supplier')" style="padding:13px;border-radius:10px;border:2px solid #E2DED3;background:#fff;color:#0E2A3D;font-weight:700;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;letter-spacing:.02em;">🚚 SUPPLIER — Weekly/PMI/Air</button>
-    </div>
-    <div id="pwdBox" style="display:none;margin-top:20px;">
-      <input type="password" id="pwdInput" placeholder="Contraseña" style="width:100%;padding:11px 14px;border-radius:8px;border:1px solid #E2DED3;font-size:13px;font-family:'Inter',sans-serif;margin-bottom:10px;box-sizing:border-box;">
-      <div id="pwdErr" style="display:none;color:#C0392B;font-size:11px;margin-bottom:10px;font-family:'Inter',sans-serif;">Contraseña incorrecta</div>
-      <button onclick="tryLogin()" style="width:100%;padding:11px;border-radius:8px;border:none;background:#2E8FB0;color:#fff;font-weight:700;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;">Ingresar</button>
-    </div>
+    <p style="font-size:12px;color:#6B7280;font-family:'Inter',sans-serif;margin-bottom:22px;">Ingresa con tu cuenta</p>
+    <input type="email" id="loginEmail" placeholder="Correo" style="width:100%;padding:11px 14px;border-radius:8px;border:1px solid #E2DED3;font-size:13px;font-family:'Inter',sans-serif;margin-bottom:10px;box-sizing:border-box;">
+    <input type="password" id="loginPwd" placeholder="Contraseña" style="width:100%;padding:11px 14px;border-radius:8px;border:1px solid #E2DED3;font-size:13px;font-family:'Inter',sans-serif;margin-bottom:10px;box-sizing:border-box;">
+    <div id="loginErr" style="display:none;color:#C0392B;font-size:11px;margin-bottom:10px;font-family:'Inter',sans-serif;"></div>
+    <button id="loginBtn" onclick="tryLogin()" style="width:100%;padding:11px;border-radius:8px;border:none;background:#2E8FB0;color:#fff;font-weight:700;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;">Ingresar</button>
   </div>
 </div>
 <div class="topbar">
@@ -224,33 +220,43 @@ table.senasa tr.date-total:hover td,table.senasa tr.grand-total:hover td{backgro
 <main id="main"></main>
 <div class="tt" id="tt"></div>
 <script>
-// ── LOGIN GATE ──────────────────────────────────────────────
-// NOTE: this is a client-side gate for convenience (separating internal vs.
-// supplier views), NOT real security — anyone can read these values from the
-// page source. Don't use it to protect sensitive/confidential data.
-const ATHENA_PASSWORDS = { hortifrut: 'hfpe2026*', supplier: 'proveedor2026' };
-const SUPPLIER_TABS = ['weekly', 'pmi', 'air'];
-let USER_ROLE = null, pendingRole = null;
+// ── LOGIN GATE (Supabase Auth) ──────────────────────────────
+// Real authentication: the browser never sees a shared password embedded in the
+// page source. Access to each dataset is enforced server-side by Row Level
+// Security policies in Supabase, based on the signed-in user's role.
+const SUPABASE_URL = 'https://mgtboeifqijqipeokwgs.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ndGJvZWlmcWlqcWlwZW9rd2dzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NTc5MzIsImV4cCI6MjEwMDEzMzkzMn0.cn1PP77beZeph2ZcoAiHeP9KyZEugMJJ3rL3vUoJwHQ';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-function showPwd(role) {
-  pendingRole = role;
-  document.getElementById('pwdBox').style.display = 'block';
-  document.getElementById('pwdErr').style.display = 'none';
-  document.getElementById('pwdInput').value = '';
-  document.getElementById('pwdInput').focus();
-}
-function tryLogin() {
-  const val = document.getElementById('pwdInput').value;
-  if (val === ATHENA_PASSWORDS[pendingRole]) {
-    USER_ROLE = pendingRole;
-    document.getElementById('loginGate').style.display = 'none';
-    loadDataAndInit();
-  } else {
-    document.getElementById('pwdErr').style.display = 'block';
+const SUPPLIER_TABS = ['weekly', 'pmi', 'air'];
+let USER_ROLE = null;
+
+async function tryLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPwd').value;
+  const errEl = document.getElementById('loginErr'), btn = document.getElementById('loginBtn');
+  errEl.style.display = 'none';
+  if (!email || !password) { errEl.textContent = 'Ingresa tu correo y contraseña.'; errEl.style.display = 'block'; return; }
+  btn.disabled = true; btn.textContent = 'Ingresando…';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) {
+    btn.disabled = false; btn.textContent = 'Ingresar';
+    errEl.textContent = 'Correo o contraseña incorrectos.'; errEl.style.display = 'block';
+    return;
   }
+  const { data: profile, error: profErr } = await sb.from('profiles').select('role,full_name').eq('id', data.user.id).single();
+  if (profErr || !profile) {
+    btn.disabled = false; btn.textContent = 'Ingresar';
+    errEl.textContent = 'Tu cuenta no tiene un perfil asignado. Contacta al administrador.'; errEl.style.display = 'block';
+    await sb.auth.signOut();
+    return;
+  }
+  USER_ROLE = profile.role;
+  document.getElementById('loginGate').style.display = 'none';
+  loadDataAndInit();
 }
 document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && document.getElementById('pwdBox').style.display === 'block') tryLogin();
+  if (e.key === 'Enter' && document.getElementById('loginGate').style.display !== 'none') tryLogin();
 });
 // ── SENASA DATA (151 confirmed rows with inspector) ───────────
 
@@ -277,8 +283,13 @@ function sw(id){
 
 let SENASA,WROWS,AIR,AIRLINES,FWKS,WKL,KPI,EX,DEST,LINEAS,PMI_PORTS,FWKS_MODE,EMBARQUES,TR_PROGRAM,PORTS_RAW;
 async function loadDataAndInit(){
-  const res = await fetch('data.json', {cache:'no-store'});
-  const d = await res.json();
+  const { data: rows, error } = await sb.from('dashboard_data').select('dataset_name,payload');
+  if (error) {
+    document.getElementById('main').innerHTML = `<div style="padding:40px;text-align:center;color:var(--bad);">Error cargando datos: ${error.message}</div>`;
+    return;
+  }
+  const d = {};
+  rows.forEach(r => { d[r.dataset_name] = r.payload; });
   ({SENASA,WROWS,AIR,AIRLINES,FWKS,WKL,KPI,EX,DEST,LINEAS,PMI_PORTS,FWKS_MODE,EMBARQUES,TR_PROGRAM,PORTS_RAW} = d);
   initDashboard();
 }
@@ -1220,7 +1231,7 @@ function bUpload(){
 }
 
 const UPLOAD_API = 'https://athena-api-pxm7.onrender.com/publish';
-const UPLOAD_API_KEY = 'hz-9f83jd83md-secret';
+const UPLOAD_API_KEY = 'CAMBIA_ESTA_CLAVE_POR_TU_API_KEY_DE_RENDER';
 function doUpload(){
   const nameEl=document.getElementById('upl-name');
   const inp=document.getElementById('upl-file');
