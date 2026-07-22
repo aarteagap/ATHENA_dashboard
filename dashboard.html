@@ -206,7 +206,7 @@ table.senasa tr.date-total:hover td,table.senasa tr.grand-total:hover td{backgro
 </div>
 <div class="topbar">
   <div class="ti">
-    <div class="brand"><div class="bm">A</div><div><h1>ATHENA Control Tower</h1><p>HORIZON_FORECAST_2627 · Exportación Multimodal</p></div></div>
+    <div class="brand"><div class="bm">A</div><div><h1>ATHENA Control Tower</h1><p>HORIZON_FORECAST_2627 · Exportación Multimodal <span id="lastUpdatedTag" style="color:#8FB8C9;"></span></p></div></div>
     <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#BFD9E5;display:flex;align-items:center;gap:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#2E8B57;box-shadow:0 0 5px #2E8B57;display:inline-block;"></span>483 registros · S20–S32</span>
   </div>
   <div class="tabs" id="tabBar"></div>
@@ -228,7 +228,7 @@ const SUPABASE_URL = 'https://mgtboeifqijqipeokwgs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ndGJvZWlmcWlqcWlwZW9rd2dzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NTc5MzIsImV4cCI6MjEwMDEzMzkzMn0.cn1PP77beZeph2ZcoAiHeP9KyZEugMJJ3rL3vUoJwHQ';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const SUPPLIER_TABS = ['weekly', 'pmi', 'air'];
+const SUPPLIER_TABS = ['weekly', 'pmi', 'air', 'upload'];
 let USER_ROLE = null;
 
 async function tryLogin() {
@@ -282,7 +282,7 @@ function sw(id){
   document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='p-'+id));
 }
 
-let SENASA,WROWS,AIR,AIRLINES,FWKS,WKL,KPI,EX,DEST,LINEAS,PMI_PORTS,FWKS_MODE,EMBARQUES,TR_PROGRAM,PORTS_RAW;
+let SENASA,WROWS,AIR,AIRLINES,FWKS,WKL,KPI,EX,DEST,LINEAS,PMI_PORTS,FWKS_MODE,EMBARQUES,TR_PROGRAM,PORTS_RAW,FORECAST_RAW,META;
 async function loadDataAndInit(){
   const { data: rows, error } = await sb.from('dashboard_data').select('dataset_name,payload');
   if (error) {
@@ -291,7 +291,12 @@ async function loadDataAndInit(){
   }
   const d = {};
   rows.forEach(r => { d[r.dataset_name] = r.payload; });
-  ({SENASA,WROWS,AIR,AIRLINES,FWKS,WKL,KPI,EX,DEST,LINEAS,PMI_PORTS,FWKS_MODE,EMBARQUES,TR_PROGRAM,PORTS_RAW} = d);
+  ({SENASA,WROWS,AIR,AIRLINES,FWKS,WKL,KPI,EX,DEST,LINEAS,PMI_PORTS,FWKS_MODE,EMBARQUES,TR_PROGRAM,PORTS_RAW,FORECAST_RAW,META} = d);
+  if (META && META.excel_modified_iso) {
+    const dt = new Date(META.excel_modified_iso);
+    const fmt = dt.toLocaleString('es-PE', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
+    document.getElementById('lastUpdatedTag').textContent = `· Última actualización: ${fmt}`;
+  }
   initDashboard();
 }
 
@@ -312,6 +317,7 @@ window.renderAirAll=(...a)=>renderAirAll(...a);
 window.renderPMIAll=(...a)=>renderPMIAll(...a);
 window.renderPorts=(...a)=>renderPorts(...a);
 window.renderWeekly=(...a)=>renderWeekly(...a);
+window.renderForecast=(...a)=>renderForecast(...a);
 window.downloadEmbarquesExcel=(...a)=>downloadEmbarquesExcel(...a);
 window.doUpload=(...a)=>doUpload(...a);
 const tabBar=document.getElementById('tabBar');
@@ -430,7 +436,19 @@ function fcSetMetric(m){
   renderForecast();
 }
 function bFcast(){
-  const allPPs=FWKS.map(w=>w.wk);
+  const allPPs=[...new Set(FORECAST_RAW.map(r=>r.pack_plan))].sort((a,b)=>a-b);
+  const allShippers=[...new Set(FORECAST_RAW.map(r=>r.shipper).filter(Boolean))].sort();
+  const allModes=[...new Set(FORECAST_RAW.map(r=>r.mode).filter(Boolean))].sort();
+  const ddField=(id,btnId,label,opts,labelFn)=>`<div class="fg">
+    <label>${label}</label>
+    <div class="dd-wrap">
+      <button type="button" class="dd-btn" id="${btnId}" onclick="ddToggle('${id}')"><span>Todos</span><span>▾</span></button>
+      <div class="dd-panel" id="${id}">
+        <div class="dd-actions"><button type="button" class="btn-popup" onclick="ddSetAll('${id}',true);ddLabel('${id}','${btnId}','Todos');renderForecast();">Todos</button><button type="button" class="btn-popup" onclick="ddSetAll('${id}',false);ddLabel('${id}','${btnId}','Todos');renderForecast();">Ninguno</button></div>
+        ${opts.map(o=>`<label class="dd-item"><input type="checkbox" value="${o}" checked onchange="ddLabel('${id}','${btnId}','Todos');renderForecast();">${labelFn?labelFn(o):o}</label>`).join('')}
+      </div>
+    </div>
+  </div>`;
   main.insertAdjacentHTML('beforeend',`<section class="panel active" id="p-forecast">
     <div class="ph"><div class="ey">01 · Proyección vs ejecución</div><div class="pt">Forecast — Pack Plan S20→S32</div><div class="ps">Azul = Confirmado · Naranja punteada = Proyección (PRE + Conf/Canc) · badge ▲/▼ = ADD+EXADD · Hover para detalle.</div></div>
     <div class="card" style="margin-bottom:14px;">
@@ -443,6 +461,8 @@ function bFcast(){
             <button type="button" id="fc-btn-pal" class="btn-popup" style="font-size:11px;padding:5px 12px;font-weight:700;" onclick="fcSetMetric('pallets')">🧱 Pallets</button>
           </div>
         </div>
+        ${ddField('fc-sh-panel','fc-sh-btn','Shipper',allShippers)}
+        ${ddField('fc-mo-panel','fc-mo-btn','Modo',allModes,m=>m==='Aéreo'?'✈ Aéreo':m==='Marítimo'?'⚓ Marítimo':'🚚 '+m)}
         <div class="fg" style="width:100%;">
           <label>Pack Plan</label>
           <div style="display:flex;gap:4px;margin-bottom:6px;">
@@ -475,12 +495,40 @@ function fcSetAll(state){
   renderForecast();
 }
 
+function fcAggregate(rows,weeks){
+  const byWeek={};
+  weeks.forEach(wk=>{byWeek[wk]={wk,label:`S${wk}`,fcl_conf:0,pal_conf:0,fcl_proj:0,pal_proj:0,fcl_add:0,pal_add:0,fcl_expo:0,pal_expo:0,fcl_exadd:0,pal_exadd:0,fcl_airadd:0,pal_airadd:0,fcl_cancelado:0,pal_cancelado:0};});
+  rows.forEach(r=>{
+    const b=byWeek[r.pack_plan];if(!b)return;
+    const isProj=r.is_pre||r.status==='Confirmado'||r.status==='Cancelado';
+    if(r.status==='Confirmado'){b.fcl_conf+=r.fcl;b.pal_conf+=r.pallets;}
+    if(r.status==='Cancelado'){b.fcl_cancelado+=r.fcl;b.pal_cancelado+=r.pallets;}
+    if(isProj){b.fcl_proj+=r.fcl;b.pal_proj+=r.pallets;}
+    if(r.is_add){b.fcl_add+=r.fcl;b.pal_add+=r.pallets;}
+    if(r.is_expo){b.fcl_expo+=r.fcl;b.pal_expo+=r.pallets;}
+    if(r.is_exadd){b.fcl_exadd+=r.fcl;b.pal_exadd+=r.pallets;}
+    if(r.is_airadd){b.fcl_airadd+=r.fcl;b.pal_airadd+=r.pallets;}
+  });
+  return weeks.map(wk=>{
+    const b=byWeek[wk];
+    b.fcl_addon=b.fcl_add+b.fcl_exadd;
+    b.pal_addon=b.pal_add+b.pal_exadd;
+    Object.keys(b).forEach(k=>{if(typeof b[k]==='number')b[k]=Math.round(b[k]*10)/10;});
+    return b;
+  });
+}
+
 function renderForecast(){
   const selPPs=Array.from(document.querySelectorAll('.fc-pp-cb:checked')).map(cb=>+cb.value);
-  const wks=FWKS.filter(w=>selPPs.includes(w.wk));
-  const wAir=FWKS_MODE['Aéreo'].filter(w=>selPPs.includes(w.wk));
-  const wMar=FWKS_MODE['Marítimo'].filter(w=>selPPs.includes(w.wk));
-  const wTer=FWKS_MODE['Terrestre'].filter(w=>selPPs.includes(w.wk));
+  const selShippers=ddChecked('fc-sh-panel');
+  const selModes=ddChecked('fc-mo-panel');
+  let ft=FORECAST_RAW.filter(r=>selPPs.includes(r.pack_plan));
+  if(selShippers.length)ft=ft.filter(r=>selShippers.includes(r.shipper));
+  if(selModes.length)ft=ft.filter(r=>selModes.includes(r.mode));
+  const wks=fcAggregate(ft,selPPs.slice().sort((a,b)=>a-b));
+  const wAir=fcAggregate(ft.filter(r=>r.mode==='Aéreo'),selPPs.slice().sort((a,b)=>a-b));
+  const wMar=fcAggregate(ft.filter(r=>r.mode==='Marítimo'),selPPs.slice().sort((a,b)=>a-b));
+  const wTer=fcAggregate(ft.filter(r=>r.mode==='Terrestre'),selPPs.slice().sort((a,b)=>a-b));
   const kC=fcMetric==='fcl'?'fcl_conf':'pal_conf',kP=fcMetric==='fcl'?'fcl_proj':'pal_proj',kA=fcMetric==='fcl'?'fcl_addon':'pal_addon';
   const kAdd=fcMetric==='fcl'?'fcl_add':'pal_add',kExpo=fcMetric==='fcl'?'fcl_expo':'pal_expo',kExadd=fcMetric==='fcl'?'fcl_exadd':'pal_exadd';
   const kAirAdd=fcMetric==='fcl'?'fcl_airadd':'pal_airadd';
@@ -496,7 +544,8 @@ function renderForecast(){
     return`<tr><td style="font-family:'JetBrains Mono',monospace;font-weight:600;">${w.label}</td><td class="num">${f1(w[kP])}</td><td class="num">${w[kAdd]>0?f1(w[kAdd]):'—'}</td><td class="num">${w[kExpo]>0?f1(w[kExpo]):'—'}</td><td class="num">${w[kExadd]>0?f1(w[kExadd]):'—'}</td><td class="num">${f1(w[kP]+w[kA])}${w[kA]>0?`<span class="addon ${up?'aup':'adn'}">${up?'▲':'▼'}${f1(w[kA])}</span>`:''}</td><td class="num" style="color:#2E8FB0;font-weight:600;">${hasC?f1(w[kC]):'—'}</td><td class="num" style="color:${hasC&&w[kC]<w[kP]?'var(--bad)':'var(--ok)'};font-weight:600;">${dev}</td><td><span class="pill ${cl}">${hasC?fp(ej):'Sin ejec.'}</span></td></tr>`;
   }).join('');
   document.getElementById('fc-dev-body').innerHTML=rows||'<tr><td colspan="9" style="text-align:center;color:var(--mu);padding:16px;">Selecciona al menos un Pack Plan</td></tr>';
-  document.getElementById('fc-stat').textContent=`${wks.length} de ${FWKS.length} semanas seleccionadas · métrica: ${unit}`;
+  const totalPPs=[...new Set(FORECAST_RAW.map(r=>r.pack_plan))].length;
+  document.getElementById('fc-stat').textContent=`${wks.length} de ${totalPPs} semanas seleccionadas · métrica: ${unit}`;
   if(wks.length>1){
     document.getElementById('fc-chart-wrap').innerHTML=buildChart(wks,'fc-g',fcMetric);
     document.getElementById('fc-wrap-air').innerHTML=buildChart(wAir,'fc-air',fcMetric);
@@ -1226,8 +1275,6 @@ function bUpload(){
     <div class="ph"><div class="ey">09 · Administración</div><div class="pt">Actualizar Datos</div><div class="ps">Sube el Excel más reciente para actualizar el dashboard directamente.</div></div>
     <div class="card" style="max-width:560px;">
       <div class="ct">Subir HORIZON_FORECAST_2627_V1.xlsm</div>
-      <label style="display:block;font-size:11px;font-weight:600;color:var(--mu);margin-bottom:4px;">Tu nombre (para el registro)</label>
-      <input type="text" id="upl-name" placeholder="Ej. André Arteaga" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--line);font-size:12.5px;margin-bottom:14px;box-sizing:border-box;font-family:inherit;">
       <label style="display:block;font-size:11px;font-weight:600;color:var(--mu);margin-bottom:4px;">Archivo Excel</label>
       <input type="file" id="upl-file" accept=".xlsm,.xlsx" style="display:block;margin-bottom:14px;font-size:12px;">
       <button type="button" class="btn-popup" id="upl-btn" style="font-size:12px;padding:9px 18px;font-weight:700;" onclick="doUpload()">⬆ Procesar y Publicar</button>
@@ -1237,21 +1284,17 @@ function bUpload(){
 }
 
 const UPLOAD_API = 'https://athena-api-pxm7.onrender.com/publish';
-const UPLOAD_API_KEY = 'hz-9f83jd83md-secret';
+const UPLOAD_API_KEY = 'CAMBIA_ESTA_CLAVE_POR_TU_API_KEY_DE_RENDER';
 function doUpload(){
-  const nameEl=document.getElementById('upl-name');
   const inp=document.getElementById('upl-file');
   const statusEl=document.getElementById('upl-status');
   const btn=document.getElementById('upl-btn');
-  const name=nameEl.value.trim();
-  if(!name){statusEl.innerHTML='<span style="color:var(--bad);">Escribe tu nombre antes de publicar.</span>';return;}
   if(!inp.files.length){statusEl.innerHTML='<span style="color:var(--bad);">Selecciona un archivo primero.</span>';return;}
   const file=inp.files[0];
   btn.disabled=true;btn.textContent='⏳ Procesando… (puede tardar ~1 min)';
   statusEl.innerHTML='<span style="color:var(--mu);">Subiendo y procesando el Excel, por favor espera…</span>';
   const fd=new FormData();
   fd.append('file',file);
-  fd.append('updater_name',name);
   fetch(UPLOAD_API,{method:'POST',headers:{'X-API-Key':UPLOAD_API_KEY},body:fd})
     .then(r=>r.json().then(data=>({ok:r.ok,data})))
     .then(({ok,data})=>{
@@ -1260,7 +1303,7 @@ function doUpload(){
         statusEl.innerHTML=`<span style="color:var(--bad);">❌ Error: ${data.error||'algo salió mal'}</span>`;
         return;
       }
-      statusEl.innerHTML=`<span style="color:var(--ok);">✅ Publicado por ${data.updated_by} (commit ${(data.commit_sha||'').slice(0,7)}). Refresca la página para ver los datos nuevos.</span>`;
+      statusEl.innerHTML=`<span style="color:var(--ok);">✅ Publicado correctamente (commit ${(data.commit_sha||'').slice(0,7)}). Refresca la página para ver los datos nuevos.</span>`;
     })
     .catch(err=>{
       btn.disabled=false;btn.textContent='⬆ Procesar y Publicar';
