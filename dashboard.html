@@ -627,6 +627,11 @@ function portsSetMetric(m){
   renderPorts();
 }
 
+function metricAgg(rows){
+  if(portsMetric==='fcl')return rows.reduce((a,r)=>a+r.fcl,0);
+  return new Set(rows.filter(r=>r.po).map(r=>r.po)).size;
+}
+
 function renderPorts(){
 
   const selST=ddChecked('ports-st-panel');
@@ -634,47 +639,49 @@ function renderPorts(){
   let ft=PORTS_RAW;
   if(selST.length)ft=ft.filter(r=>selST.includes(r.status));
   if(selPP.length)ft=ft.filter(r=>selPP.includes(r.pack_plan));
-  document.getElementById('ports-gstat').textContent=`${ft.length} de ${PORTS_RAW.length} registros`;
+  document.getElementById('ports-gstat').textContent=`${ft.length} de ${PORTS_RAW.length} registros · métrica: ${portsMetric==='fcl'?'FCL':'PO'}`;
 
-  const total_recs=ft.length,confirmados=ft.filter(r=>r.status==='Confirmado').length,proyectados=ft.filter(r=>r.status==='Proyectado').length,cancelados=ft.filter(r=>r.status==='Cancelado').length;
+  const unitLbl=portsMetric==='fcl'?'FCL':'PO';
+  const total_recs=metricAgg(ft),confirmados=metricAgg(ft.filter(r=>r.status==='Confirmado')),proyectados=metricAgg(ft.filter(r=>r.status==='Proyectado')),cancelados=metricAgg(ft.filter(r=>r.status==='Cancelado'));
+  const fmtN=v=>portsMetric==='fcl'?f1(v):v;
   const tasa_conf=total_recs?confirmados/total_recs*100:0,tasa_canc=total_recs?cancelados/total_recs*100:0;
-  document.getElementById('ports-kg').innerHTML=`<div class="kc" style="--acc:#2E8FB0"><div class="kl">Total</div><div class="kv">${total_recs}</div></div><div class="kc" style="--acc:#2E8FB0"><div class="kl">Confirmados</div><div class="kv">${confirmados}</div><div class="kf">${total_recs?fp(tasa_conf):'—'}</div></div><div class="kc" style="--acc:#D7CDB0"><div class="kl">Proyectados</div><div class="kv">${proyectados}</div><div class="kf">${total_recs?fp(proyectados/total_recs*100):'—'}</div></div><div class="kc" style="--acc:#C0392B"><div class="kl">Cancelados</div><div class="kv">${cancelados}</div><div class="kf">${total_recs?fp(tasa_canc):'—'}</div></div>`;
+  document.getElementById('ports-kg').innerHTML=`<div class="kc" style="--acc:#2E8FB0"><div class="kl">Total (${unitLbl})</div><div class="kv">${fmtN(total_recs)}</div></div><div class="kc" style="--acc:#2E8FB0"><div class="kl">Confirmados</div><div class="kv">${fmtN(confirmados)}</div><div class="kf">${total_recs?fp(tasa_conf):'—'}</div></div><div class="kc" style="--acc:#D7CDB0"><div class="kl">Proyectados</div><div class="kv">${fmtN(proyectados)}</div><div class="kf">${total_recs?fp(proyectados/total_recs*100):'—'}</div></div><div class="kc" style="--acc:#C0392B"><div class="kl">Cancelados</div><div class="kv">${fmtN(cancelados)}</div><div class="kf">${total_recs?fp(tasa_canc):'—'}</div></div>`;
 
   const colors={"Lima":"#E8A33D","Callao":"#2E8FB0","Chancay":"#163B54","Paita":"#7A6FD0"};
   const ports=["Lima","Callao","Chancay","Paita"];
   const portStats=ports.map(port=>{
     const sub=ft.filter(r=>r.port===port);
-    const tot=sub.length;
-    const c=sub.filter(r=>r.status==='Confirmado').length,p=sub.filter(r=>r.status==='Proyectado').length,k=sub.filter(r=>r.status==='Cancelado').length;
+    const recCount=sub.length;
+    const c=metricAgg(sub.filter(r=>r.status==='Confirmado')),p=metricAgg(sub.filter(r=>r.status==='Proyectado')),k=metricAgg(sub.filter(r=>r.status==='Cancelado'));
+    const tot=c+p+k;
     const cumpl=tot?c/tot*100:0;
-    const confSub=sub.filter(r=>r.status==='Confirmado');
-    const metricVal=portsMetric==='fcl'?confSub.reduce((a,r)=>a+r.fcl,0):new Set(confSub.filter(r=>r.po).map(r=>r.po)).size;
     const modeCounts={};sub.forEach(r=>{if(r.mode)modeCounts[r.mode]=(modeCounts[r.mode]||0)+1;});
     const mode=Object.keys(modeCounts).sort((a,b)=>modeCounts[b]-modeCounts[a])[0]||'';
-    return{port,conf:c,proy:p,canc:k,total:tot,cumpl,metricVal,mode,color:colors[port]};
-  }).filter(p=>p.total>0);
+    return{port,conf:c,proy:p,canc:k,total:tot,recCount,cumpl,mode,color:colors[port]};
+  }).filter(p=>p.recCount>0);
 
   const portCards=portStats.map(p=>{const c=Math.min(p.cumpl,100),cc=c>=80?'var(--ok)':c>=50?'var(--warn)':'var(--bad)',sl=c>=80?'✅ Óptimo':c>=50?'⚠️ Revisar':'🔴 Crítico';
-    return`<div class="port-card" style="--pc:${p.color}"><div class="pcn">${p.port}<span class="badge" style="background:${p.color}20;color:${p.color};">${p.mode==='Aéreo'?'✈':p.mode==='Marítimo'?'⚓':'🚚'} ${p.mode||'—'}</span></div><div class="pcs"><span>${portsMetric==='fcl'?'FCL conf.':'PO conf.'}</span><b>${portsMetric==='fcl'?f1(p.metricVal):p.metricVal}</b></div><div class="pcs"><span>Confirmado</span><b style="color:#2E8FB0">${p.conf}</b></div><div class="pcs"><span>Proyectado</span><b>${p.proy}</b></div><div class="pcs"><span>Cancelado</span><b style="color:var(--bad)">${p.canc}</b></div><div class="pcs"><span>% Cumplimiento</span><b style="color:${cc}">${fp(c)}</b></div><div class="pcm"><div style="width:${(p.conf/p.total*100).toFixed(1)}%;background:#2E8FB0"></div><div style="width:${(p.proy/p.total*100).toFixed(1)}%;background:#D7CDB0"></div><div style="width:${(p.canc/p.total*100).toFixed(1)}%;background:#C0392B"></div></div><div class="pc-footer"><div class="pc-stat"><div class="pc-stat-val">${p.total}</div><div class="pc-stat-lbl">Registros</div></div><div class="pc-stat"><div class="pc-stat-val" style="font-size:14px;color:${cc}">${fp(c)}</div><div class="pc-stat-lbl">Cumplim.</div></div></div><div style="margin-top:8px;font-size:10px;text-align:center;padding:4px 8px;border-radius:6px;background:${p.color}15;color:${p.color};font-weight:600;">${sl}</div></div>`;
+    return`<div class="port-card" style="--pc:${p.color}"><div class="pcn">${p.port}<span class="badge" style="background:${p.color}20;color:${p.color};">${p.mode==='Aéreo'?'✈':p.mode==='Marítimo'?'⚓':'🚚'} ${p.mode||'—'}</span></div><div class="pcs"><span>Confirmado</span><b style="color:#2E8FB0">${fmtN(p.conf)}</b></div><div class="pcs"><span>Proyectado</span><b>${fmtN(p.proy)}</b></div><div class="pcs"><span>Cancelado</span><b style="color:var(--bad)">${fmtN(p.canc)}</b></div><div class="pcs"><span>% Cumplimiento</span><b style="color:${cc}">${fp(c)}</b></div><div class="pcm"><div style="width:${p.total?(p.conf/p.total*100).toFixed(1):0}%;background:#2E8FB0"></div><div style="width:${p.total?(p.proy/p.total*100).toFixed(1):0}%;background:#D7CDB0"></div><div style="width:${p.total?(p.canc/p.total*100).toFixed(1):0}%;background:#C0392B"></div></div><div class="pc-footer"><div class="pc-stat"><div class="pc-stat-val">${fmtN(p.total)}</div><div class="pc-stat-lbl">${unitLbl}</div></div><div class="pc-stat"><div class="pc-stat-val" style="font-size:14px;color:${cc}">${fp(c)}</div><div class="pc-stat-lbl">Cumplim.</div></div></div><div style="margin-top:8px;font-size:10px;text-align:center;padding:4px 8px;border-radius:6px;background:${p.color}15;color:${p.color};font-weight:600;">${sl}</div></div>`;
   }).join('');
   document.getElementById('ports-cards').innerHTML=portCards||'<div style="color:var(--mu);font-size:12px;padding:12px;">Sin registros para este filtro</div>';
 
-  const portBars=portStats.map(p=>`<div style="display:grid;grid-template-columns:72px 1fr 72px;align-items:center;gap:8px;margin-bottom:8px;"><div style="text-align:right;font-size:11px;font-weight:500;">${p.port}</div><div style="background:#EFEBE0;border-radius:5px;height:14px;overflow:hidden;display:flex;"><div style="width:${(p.conf/p.total*100).toFixed(1)}%;background:#2E8FB0;height:100%;"></div><div style="width:${(p.proy/p.total*100).toFixed(1)}%;background:#D7CDB0;height:100%;"></div><div style="width:${(p.canc/p.total*100).toFixed(1)}%;background:#C0392B;height:100%;"></div></div><div style="font-family:'JetBrains Mono',monospace;font-weight:600;font-size:11px;">${p.total}</div></div>`).join('');
+  const portBars=portStats.map(p=>`<div style="display:grid;grid-template-columns:72px 1fr 72px;align-items:center;gap:8px;margin-bottom:8px;"><div style="text-align:right;font-size:11px;font-weight:500;">${p.port}</div><div style="background:#EFEBE0;border-radius:5px;height:14px;overflow:hidden;display:flex;"><div style="width:${p.total?(p.conf/p.total*100).toFixed(1):0}%;background:#2E8FB0;height:100%;"></div><div style="width:${p.total?(p.proy/p.total*100).toFixed(1):0}%;background:#D7CDB0;height:100%;"></div><div style="width:${p.total?(p.canc/p.total*100).toFixed(1):0}%;background:#C0392B;height:100%;"></div></div><div style="font-family:'JetBrains Mono',monospace;font-weight:600;font-size:11px;">${fmtN(p.total)}</div></div>`).join('');
   document.getElementById('ports-bars').innerHTML=portBars||'<div style="color:var(--mu);font-size:12px;padding:8px;">Sin datos</div>';
 
   const slices=[{n:'Confirmado',v:confirmados,c:'#2E8FB0'},{n:'Proyectado',v:proyectados,c:'#D7CDB0'},{n:'Cancelado',v:cancelados,c:'#C0392B'}];
   let cum=0;const conic=total_recs?slices.map(s=>{const st=cum,en=cum+(s.v/total_recs*360);cum=en;return`${s.c} ${st.toFixed(1)}deg ${en.toFixed(1)}deg`;}).join(','):'#EFEBE0 0deg 360deg';
-  document.getElementById('ports-donut').innerHTML=`<div style="width:120px;height:120px;border-radius:50%;background:conic-gradient(${conic});flex-shrink:0;position:relative;"><div style="position:absolute;inset:16px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;"><div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px;">${total_recs}</div><div style="font-size:8px;color:var(--mu);">total</div></div></div><div class="dl">${slices.map(s=>`<div class="dli"><span class="dls" style="background:${s.c}"></span><span>${s.n}</span><span class="dlv">${s.v}·${total_recs?fp(s.v/total_recs*100):'0%'}</span></div>`).join('')}</div>`;
+  document.getElementById('ports-donut').innerHTML=`<div style="width:120px;height:120px;border-radius:50%;background:conic-gradient(${conic});flex-shrink:0;position:relative;"><div style="position:absolute;inset:16px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;"><div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;">${fmtN(total_recs)}</div><div style="font-size:8px;color:var(--mu);">total ${unitLbl}</div></div></div><div class="dl">${slices.map(s=>`<div class="dli"><span class="dls" style="background:${s.c}"></span><span>${s.n}</span><span class="dlv">${fmtN(s.v)}·${total_recs?fp(s.v/total_recs*100):'0%'}</span></div>`).join('')}</div>`;
 
   // Proyección por Puertos — stacked distribution by Pack Plan, respects the same global filters
   const weeks=[...new Set(ft.map(r=>r.pack_plan))].sort((a,b)=>a-b);
   const byWeekPort={};
-  weeks.forEach(wk=>{byWeekPort[wk]={};ports.forEach(p=>byWeekPort[wk][p]=0);});
+  weeks.forEach(wk=>{byWeekPort[wk]={};ports.forEach(p=>byWeekPort[wk][p]=portsMetric==='po'?new Set():0);});
   ft.forEach(r=>{
     if(!ports.includes(r.port))return;
     if(portsMetric==='fcl')byWeekPort[r.pack_plan][r.port]+=r.fcl;
-    else byWeekPort[r.pack_plan][r.port]+=1;
+    else if(r.po)byWeekPort[r.pack_plan][r.port].add(r.po);
   });
+  if(portsMetric==='po'){weeks.forEach(wk=>ports.forEach(p=>{byWeekPort[wk][p]=byWeekPort[wk][p].size;}));}
   const mx=Math.max(...weeks.map(wk=>ports.reduce((a,p)=>a+byWeekPort[wk][p],0)),1);
   const cols=weeks.map(wk=>{
     const tot=ports.reduce((a,p)=>a+byWeekPort[wk][p],0);
@@ -1284,7 +1291,7 @@ function bUpload(){
 }
 
 const UPLOAD_API = 'https://athena-api-pxm7.onrender.com/publish';
-const UPLOAD_API_KEY = 'hz-9f83jd83md-secret';
+const UPLOAD_API_KEY = 'CAMBIA_ESTA_CLAVE_POR_TU_API_KEY_DE_RENDER';
 function doUpload(){
   const inp=document.getElementById('upl-file');
   const statusEl=document.getElementById('upl-status');
