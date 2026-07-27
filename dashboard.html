@@ -281,7 +281,7 @@ function sw(id){
   document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='p-'+id));
 }
 
-let SENASA,WROWS,AIR,AIRLINES,FWKS,WKL,KPI,EX,DEST,LINEAS,PMI_PORTS,FWKS_MODE,EMBARQUES,TR_PROGRAM,PORTS_RAW,FORECAST_RAW,META;
+let SENASA,WROWS,AIR,AIRLINES,FWKS,WKL,KPI,EX,DEST,LINEAS,PMI_PORTS,FWKS_MODE,EMBARQUES,TR_PROGRAM,PORTS_RAW,FORECAST_RAW,META,EXECUTE_RAW;
 async function loadDataAndInit(){
   const { data: rows, error } = await sb.from('dashboard_data').select('dataset_name,payload');
   if (error) {
@@ -290,7 +290,7 @@ async function loadDataAndInit(){
   }
   const d = {};
   rows.forEach(r => { d[r.dataset_name] = r.payload; });
-  ({SENASA,WROWS,AIR,AIRLINES,FWKS,WKL,KPI,EX,DEST,LINEAS,PMI_PORTS,FWKS_MODE,EMBARQUES,TR_PROGRAM,PORTS_RAW,FORECAST_RAW,META} = d);
+  ({SENASA,WROWS,AIR,AIRLINES,FWKS,WKL,KPI,EX,DEST,LINEAS,PMI_PORTS,FWKS_MODE,EMBARQUES,TR_PROGRAM,PORTS_RAW,FORECAST_RAW,META,EXECUTE_RAW} = d);
   if (META && META.excel_modified_iso) {
     const dt = new Date(META.excel_modified_iso);
     const fmt = dt.toLocaleString('es-PE', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
@@ -317,6 +317,7 @@ window.renderPMIAll=(...a)=>renderPMIAll(...a);
 window.renderPorts=(...a)=>renderPorts(...a);
 window.renderWeekly=(...a)=>renderWeekly(...a);
 window.renderForecast=(...a)=>renderForecast(...a);
+window.renderExecute=(...a)=>renderExecute(...a);
 window.downloadEmbarquesExcel=(...a)=>downloadEmbarquesExcel(...a);
 window.doUpload=(...a)=>doUpload(...a);
 const tabBar=document.getElementById('tabBar');
@@ -560,19 +561,101 @@ function renderForecast(){
 // 02 EXECUTE
 // ══════════════════════════════════════════════════════════════
 function bExec(){
-  const ex=EX,mxM=Math.max(...ex.dam_by_mode.map(m=>m.dam_with)),mxP=Math.max(...ex.dam_by_pp.map(p=>p.dam_unicas+p.sin_dam));
+  const ex=EX,mxM=Math.max(...ex.dam_by_mode.map(m=>m.dam_with));
   const mxD=Math.max(...DEST.map(d=>d.fcl)),mxL=Math.max(...LINEAS.map(l=>l.fcl));
   const modeBars=ex.dam_by_mode.map(m=>{const c=m.mode==='Aéreo'?'#2E8FB0':m.mode==='Marítimo'?'#163B54':'#7A6FD0';return`<div class="br" style="grid-template-columns:80px 1fr 54px;"><div class="lbl">${m.mode}</div><div class="bt"><div class="bf" style="width:${(m.dam_with/mxM*100).toFixed(1)}%;background:${c}"></div></div><div class="bv">${m.dam_with}</div></div>`;}).join('');
   const damTbl=ex.dam_by_mode.map(m=>{const cl=sem(m.pct);const cm={ok:'var(--ok)',warn:'var(--warn)',bad:'var(--bad)'},bm={ok:'var(--ok-bg)',warn:'var(--warn-bg)',bad:'var(--bad-bg)'};return`<tr><td>${m.mode}</td><td class="num">${m.dam_with}</td><td class="num">${m.dam_without}</td><td class="num"><span style="padding:3px 10px;border-radius:20px;font-weight:700;font-size:10.5px;background:${bm[cl]};color:${cm[cl]};">${fp(m.pct)}</span></td></tr>`;}).join('');
-  const ppCols=ex.dam_by_pp.map(p=>{const t=p.dam_unicas+p.sin_dam,h=mxP>0?(t/mxP*100).toFixed(1):'0';return`<div class="sc-col"><div class="sc-val">${t}</div><div class="sc-bars" style="height:${h}%;"><div class="seg" style="height:${t>0?(p.dam_unicas/t*100).toFixed(1):0}%;background:#2E8FB0;"></div><div class="seg" style="height:${t>0?(p.sin_dam/t*100).toFixed(1):0}%;background:#EF9F27;"></div></div><div class="sc-lbl">${p.label}</div></div>`;}).join('');
+  const shippers=[...new Set(EXECUTE_RAW.map(r=>r.shipper).filter(Boolean))].sort();
+  const datesRaw=EXECUTE_RAW.map(r=>r.dispatch_date);
+  const dates=[...new Set(datesRaw.filter(Boolean))].sort((a,b)=>{const[da,ma,ya]=a.split('/'),[db,mb,yb]=b.split('/');return new Date(+ya,+ma-1,+da)-new Date(+yb,+mb-1,+db);});
+  const hasBlankDate=datesRaw.some(d=>!d);
+  const ddField=(id,btnId,label,opts,labelFn,hasBlank)=>`<div class="fg">
+    <label>${label}</label>
+    <div class="dd-wrap">
+      <button type="button" class="dd-btn" id="${btnId}" onclick="ddToggle('${id}')"><span>Todos</span><span>▾</span></button>
+      <div class="dd-panel" id="${id}">
+        <div class="dd-actions"><button type="button" class="btn-popup" onclick="ddSetAll('${id}',true);ddLabel('${id}','${btnId}','Todos');renderExecute();">Todos</button><button type="button" class="btn-popup" onclick="ddSetAll('${id}',false);ddLabel('${id}','${btnId}','Todos');renderExecute();">Ninguno</button></div>
+        ${opts.map(o=>`<label class="dd-item"><input type="checkbox" value="${o}" checked onchange="ddLabel('${id}','${btnId}','Todos');renderExecute();">${labelFn?labelFn(o):o}</label>`).join('')}
+        ${hasBlank?`<label class="dd-item"><input type="checkbox" value="" checked onchange="ddLabel('${id}','${btnId}','Todos');renderExecute();">(sin fecha)</label>`:''}
+      </div>
+    </div>
+  </div>`;
   main.insertAdjacentHTML('beforeend',`<section class="panel" id="p-execute">
     <div class="ph"><div class="ey">06 · Resumen ejecutado</div><div class="pt">Execute — Despachos confirmados</div></div>
-    <div class="kg"><div class="kc" style="--acc:#2E8FB0"><div class="kl">DAMs únicas</div><div class="kv">${ex.dam_unique}</div><div class="kf">de ${ex.dam_unique+ex.dam_missing}</div></div><div class="kc" style="--acc:#C0392B"><div class="kl">Sin DAM</div><div class="kv">${ex.dam_missing}</div></div><div class="kc" style="--acc:#163B54"><div class="kl">FCL confirmado</div><div class="kv">${f1(ex.total_fcl)}<span class="u">FCL</span></div></div><div class="kc" style="--acc:#2E8FB0"><div class="kl">FCL aéreo</div><div class="kv">${f1(ex.fcl_aereo)}<span class="u">FCL</span></div><div class="kf">${fp(ex.fcl_aereo/ex.total_fcl*100)}</div></div><div class="kc" style="--acc:#163B54"><div class="kl">FCL marítimo</div><div class="kv">${f1(ex.fcl_maritimo)}<span class="u">FCL</span></div><div class="kf">${fp(ex.fcl_maritimo/ex.total_fcl*100)}</div></div><div class="kc" style="--acc:#7A6FD0"><div class="kl">FCL terrestre</div><div class="kv">${f1(ex.fcl_terrestre)}<span class="u">FCL</span></div><div class="kf">${fp(ex.fcl_terrestre/ex.total_fcl*100)}</div></div></div>
+    <div class="card" style="margin-bottom:14px;">
+      <div class="ct">Filtro global <span class="sub" id="exec-gstat"></span></div>
+      <div class="filter-bar">
+        <span class="filter-tag">Status: Confirmado</span>
+        ${ddField('exec-sh-panel','exec-sh-btn','Shipper',shippers)}
+        ${ddField('exec-dt-panel','exec-dt-btn','Dispatch Date',dates,null,hasBlankDate)}
+      </div>
+    </div>
+    <div class="kg" id="exec-kg"></div>
     <div class="g2"><div class="card"><div class="ct">DAMs únicas por modo</div><div class="bars">${modeBars}</div></div><div class="card"><div class="ct">Cobertura DAM</div><div class="tbl-wrap"><table class="std"><thead><tr><th>Modo</th><th style="text-align:right">DAMs</th><th style="text-align:right">Sin DAM</th><th style="text-align:right">% Cob.</th></tr></thead><tbody>${damTbl}</tbody></table></div></div></div>
-    <div class="card"><div class="ct">DAMs por Pack Plan</div><div class="sc-chart">${ppCols}</div><div class="lrow"><div class="li2"><span class="ld2" style="background:#2E8FB0"></span>DAMs</div><div class="li2"><span class="ld2" style="background:#EF9F27"></span>Sin DAM</div></div></div>
+    <div class="card"><div class="ct">PO diferenciados por Pack Plan y Modo <span class="sub" id="exec-line-stat"></span></div><div id="exec-line-wrap" style="position:relative;max-width:900px;margin:0 auto;"></div><div class="lrow"><div class="li2"><span class="ld2" style="background:#2E8FB0"></span>Aéreo</div><div class="li2"><span class="ld2" style="background:#163B54"></span>Marítimo</div><div class="li2"><span class="ld2" style="background:#7A6FD0"></span>Terrestre</div></div></div>
     <div class="sec-title">🌍 Destinos & Rutas</div>
     <div class="g2"><div class="card"><div class="ct">Top 10 destinos</div><div class="bars">${DEST.map((d,i)=>`<div class="br" style="grid-template-columns:90px 1fr 52px;"><div class="lbl">${d.port}</div><div class="bt"><div class="bf" style="width:${(d.fcl/mxD*100).toFixed(1)}%;background:${i<3?'#E8A33D':'#163B54'}"></div></div><div class="bv">${f1(d.fcl)}</div></div>`).join('')}</div></div><div class="card"><div class="ct">FCL por línea naviera</div><div class="bars">${LINEAS.map(l=>`<div class="br" style="grid-template-columns:76px 1fr 52px;"><div class="lbl">${l.line}</div><div class="bt"><div class="bf" style="width:${(l.fcl/mxL*100).toFixed(1)}%;background:#2E8FB0"></div></div><div class="bv">${f1(l.fcl)}</div></div>`).join('')}</div></div></div>
   </section>`);
+  setTimeout(()=>{renderExecute();},50);
+}
+
+function renderExecute(){
+  const selSH=ddChecked('exec-sh-panel');
+  const selDT=ddChecked('exec-dt-panel');
+  let ft=EXECUTE_RAW;
+  if(selSH.length)ft=ft.filter(r=>selSH.includes(r.shipper));
+  if(selDT.length)ft=ft.filter(r=>selDT.includes(r.dispatch_date||''));
+  document.getElementById('exec-gstat').textContent=`${ft.length} de ${EXECUTE_RAW.length} registros`;
+
+  const coldTreatments=ft.filter(r=>r.has_tr_time).length;
+  const senasaCount=ft.filter(r=>r.senasa_att==='SENASA').length;
+  const totalBooking=new Set(ft.filter(r=>r.booking).map(r=>r.booking)).size;
+  const bookAll=totalBooking;
+  const bookByMode=m=>new Set(ft.filter(r=>r.mode===m&&r.booking).map(r=>r.booking)).size;
+  const bookAer=bookByMode('Aéreo'),bookMar=bookByMode('Marítimo'),bookTer=bookByMode('Terrestre');
+  const senasaPct=totalBooking?senasaCount/totalBooking*100:0;
+
+  document.getElementById('exec-kg').innerHTML=`<div class="kc" style="--acc:#2E8FB0"><div class="kl">Cold treatments</div><div class="kv">${coldTreatments}</div></div><div class="kc" style="--acc:#C77D1E"><div class="kl">Senasa Attention</div><div class="kv" style="font-size:20px;">${senasaCount} / ${totalBooking}</div><div class="kf">${fp(senasaPct)}</div></div><div class="kc" style="--acc:#163B54"><div class="kl">Booking confirmado</div><div class="kv">${bookAll}</div></div><div class="kc" style="--acc:#2E8FB0"><div class="kl">Booking aéreo</div><div class="kv">${bookAer}</div><div class="kf">${bookAll?fp(bookAer/bookAll*100):'—'}</div></div><div class="kc" style="--acc:#163B54"><div class="kl">Booking marítimo</div><div class="kv">${bookMar}</div><div class="kf">${bookAll?fp(bookMar/bookAll*100):'—'}</div></div><div class="kc" style="--acc:#7A6FD0"><div class="kl">Booking terrestre</div><div class="kv">${bookTer}</div><div class="kf">${bookAll?fp(bookTer/bookAll*100):'—'}</div></div>`;
+
+  // Line chart: distinct PO count by Pack Plan, one line per mode
+  const weeks=[...new Set(ft.map(r=>r.pack_plan))].sort((a,b)=>a-b);
+  const modeColors={'Aéreo':'#2E8FB0','Marítimo':'#163B54','Terrestre':'#7A6FD0'};
+  const modeData={};
+  Object.keys(modeColors).forEach(m=>{
+    modeData[m]=weeks.map(wk=>new Set(ft.filter(r=>r.pack_plan===wk&&r.mode===m&&r.po).map(r=>r.po)).size);
+  });
+  document.getElementById('exec-line-stat').textContent=`${weeks.length} semana(s)`;
+  if(weeks.length<2){
+    document.getElementById('exec-line-wrap').innerHTML='<div style="padding:40px;text-align:center;color:var(--mu);font-size:12px;">Selecciona al menos 2 semanas para trazar la curva</div>';
+  } else {
+    const W=900,H=280,pL=36,pB=28,pT=14;
+    const mxV=Math.max(...Object.values(modeData).flat(),1);
+    const xOf=i=>pL+i*(W-pL-16)/(weeks.length-1);
+    const yOf=v=>H-pB-(v/mxV)*(H-pT-pB);
+    const grid=[0,.25,.5,.75,1].map(f=>{const y=pT+(1-f)*(H-pT-pB);return`<line x1="${pL}" y1="${y.toFixed(0)}" x2="${W-4}" y2="${y.toFixed(0)}" stroke="#EFEBE0" stroke-width="1"/><text x="${pL-5}" y="${(y+4).toFixed(0)}" text-anchor="end" font-size="9" fill="#9CA3AF" font-family="JetBrains Mono">${(mxV*f).toFixed(0)}</text>`;}).join('');
+    const xlbls=weeks.map((wk,i)=>`<text x="${xOf(i).toFixed(0)}" y="${H-8}" text-anchor="middle" font-size="9" fill="#1C2940" font-family="JetBrains Mono">S${wk}</text>`).join('');
+    let svgLines='';
+    Object.keys(modeColors).forEach(m=>{
+      const pts=weeks.map((wk,i)=>({x:xOf(i),y:yOf(modeData[m][i])}));
+      const path=pts.map((p,i)=>(i===0?'M':'L')+p.x.toFixed(0)+','+p.y.toFixed(0)).join(' ');
+      svgLines+=`<path d="${path}" fill="none" stroke="${modeColors[m]}" stroke-width="2.2"/>`;
+      svgLines+=pts.map((p,i)=>`<circle class="exec-dot" data-mode="${m}" data-i="${i}" cx="${p.x.toFixed(0)}" cy="${p.y.toFixed(0)}" r="4" fill="${modeColors[m]}" stroke="#fff" stroke-width="1.5" style="cursor:pointer;"/>`).join('');
+    });
+    document.getElementById('exec-line-wrap').innerHTML=`<svg id="exec-line-svg" viewBox="0 0 ${W} ${H}" style="width:100%;height:${H+8}px;display:block;" preserveAspectRatio="none">${grid}${svgLines}${xlbls}</svg>`;
+    const svg=document.getElementById('exec-line-svg');
+    svg.querySelectorAll('circle.exec-dot').forEach(dot=>{
+      dot.addEventListener('mouseenter',()=>{
+        const m=dot.dataset.mode,i=+dot.dataset.i,wk=weeks[i];
+        ttEl.innerHTML=`<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;margin-bottom:6px;">S${wk} · ${m}</div><div style="display:flex;justify-content:space-between;gap:14px;"><span style="opacity:.8;">PO diferenciados</span><b style="font-family:'JetBrains Mono',monospace;">${modeData[m][i]}</b></div>`;
+        ttEl.style.opacity='1';
+        const rect=svg.getBoundingClientRect();
+        const cx=+dot.getAttribute('cx')*(rect.width/900),cy=+dot.getAttribute('cy')*(rect.height/288);
+        let left=cx+12,top=cy+18;if(left+180>rect.width)left=cx-190;
+        ttEl.style.left=(rect.left+left+window.scrollX)+'px';ttEl.style.top=(rect.top+top+window.scrollY)+'px';
+      });
+      dot.addEventListener('mouseleave',()=>{ttEl.style.opacity='0';});
+    });
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1292,7 +1375,7 @@ function bUpload(){
 }
 
 const UPLOAD_API = 'https://athena-api-pxm7.onrender.com/publish';
-const UPLOAD_API_KEY = 'hz-9f83jd83md-secret';
+const UPLOAD_API_KEY = 'CAMBIA_ESTA_CLAVE_POR_TU_API_KEY_DE_RENDER';
 function doUpload(){
   const inp=document.getElementById('upl-file');
   const statusEl=document.getElementById('upl-status');
