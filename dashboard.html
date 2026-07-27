@@ -273,8 +273,7 @@ const TABS=[
   {id:'pmi',     ix:'04',label:'PMI'},
   {id:'air',     ix:'05',label:'Air Program'},
   {id:'execute', ix:'06',label:'Execute'},
-  {id:'kpi',     ix:'07',label:'KPI Tracker'},
-  {id:'upload',  ix:'08',label:'⬆ Actualizar Datos'},
+  {id:'upload',  ix:'07',label:'⬆ Actualizar Datos'},
 ];
 function sw(id){
   document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));
@@ -592,7 +591,7 @@ function bExec(){
     </div>
     <div class="kg" id="exec-kg"></div>
     <div class="g2"><div class="card"><div class="ct">DAMs únicas por modo</div><div class="bars">${modeBars}</div></div><div class="card"><div class="ct">Cobertura DAM</div><div class="tbl-wrap"><table class="std"><thead><tr><th>Modo</th><th style="text-align:right">DAMs</th><th style="text-align:right">Sin DAM</th><th style="text-align:right">% Cob.</th></tr></thead><tbody>${damTbl}</tbody></table></div></div></div>
-    <div class="card"><div class="ct">PO diferenciados por Pack Plan y Modo <span class="sub" id="exec-line-stat"></span></div><div id="exec-line-wrap" style="position:relative;max-width:900px;margin:0 auto;"></div><div class="lrow"><div class="li2"><span class="ld2" style="background:#2E8FB0"></span>Aéreo</div><div class="li2"><span class="ld2" style="background:#163B54"></span>Marítimo</div><div class="li2"><span class="ld2" style="background:#7A6FD0"></span>Terrestre</div></div></div>
+    <div class="card"><div class="ct">Booking|AWB|CRT diferenciados por Pack Plan y Modo <span class="sub" id="exec-line-stat"></span></div><div id="exec-line-wrap" style="position:relative;max-width:900px;margin:0 auto;"></div><div class="lrow"><div class="li2"><span class="ld2" style="background:#2E8FB0"></span>Aéreo</div><div class="li2"><span class="ld2" style="background:#163B54"></span>Marítimo</div><div class="li2"><span class="ld2" style="background:#7A6FD0"></span>Terrestre</div></div></div>
     <div class="sec-title">🌍 Destinos & Rutas</div>
     <div class="g2"><div class="card"><div class="ct">Top 10 destinos</div><div class="bars">${DEST.map((d,i)=>`<div class="br" style="grid-template-columns:90px 1fr 52px;"><div class="lbl">${d.port}</div><div class="bt"><div class="bf" style="width:${(d.fcl/mxD*100).toFixed(1)}%;background:${i<3?'#E8A33D':'#163B54'}"></div></div><div class="bv">${f1(d.fcl)}</div></div>`).join('')}</div></div><div class="card"><div class="ct">FCL por línea naviera</div><div class="bars">${LINEAS.map(l=>`<div class="br" style="grid-template-columns:76px 1fr 52px;"><div class="lbl">${l.line}</div><div class="bt"><div class="bf" style="width:${(l.fcl/mxL*100).toFixed(1)}%;background:#2E8FB0"></div></div><div class="bv">${f1(l.fcl)}</div></div>`).join('')}</div></div></div>
   </section>`);
@@ -622,7 +621,7 @@ function renderExecute(){
   const modeColors={'Aéreo':'#2E8FB0','Marítimo':'#163B54','Terrestre':'#7A6FD0'};
   const modeData={};
   Object.keys(modeColors).forEach(m=>{
-    modeData[m]=weeks.map(wk=>new Set(ft.filter(r=>r.pack_plan===wk&&r.mode===m&&r.po).map(r=>r.po)).size);
+    modeData[m]=weeks.map(wk=>new Set(ft.filter(r=>r.pack_plan===wk&&r.mode===m&&r.booking).map(r=>r.booking)).size);
   });
   document.getElementById('exec-line-stat').textContent=`${weeks.length} semana(s)`;
   if(weeks.length<2){
@@ -646,7 +645,7 @@ function renderExecute(){
     svg.querySelectorAll('circle.exec-dot').forEach(dot=>{
       dot.addEventListener('mouseenter',()=>{
         const m=dot.dataset.mode,i=+dot.dataset.i,wk=weeks[i];
-        ttEl.innerHTML=`<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;margin-bottom:6px;">S${wk} · ${m}</div><div style="display:flex;justify-content:space-between;gap:14px;"><span style="opacity:.8;">PO diferenciados</span><b style="font-family:'JetBrains Mono',monospace;">${modeData[m][i]}</b></div>`;
+        ttEl.innerHTML=`<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;margin-bottom:6px;">S${wk} · ${m}</div><div style="display:flex;justify-content:space-between;gap:14px;"><span style="opacity:.8;">Booking diferenciados</span><b style="font-family:'JetBrains Mono',monospace;">${modeData[m][i]}</b></div>`;
         ttEl.style.opacity='1';
         const rect=svg.getBoundingClientRect();
         const cx=+dot.getAttribute('cx')*(rect.width/900),cy=+dot.getAttribute('cy')*(rect.height/288);
@@ -1347,23 +1346,12 @@ function renderSenasa(gPK,gPPs,gDD,gMO){
 // ══════════════════════════════════════════════════════════════
 // 07 KPI TRACKER
 // ══════════════════════════════════════════════════════════════
-function bKPI(){
-  const k=KPI,ex=EX;
-  const br=(lbl,val,max,color,disp)=>`<div class="br" style="grid-template-columns:88px 1fr 60px;"><div class="lbl">${lbl}</div><div class="bt"><div class="bf" style="width:${(val/max*100).toFixed(1)}%;background:${color}"></div></div><div class="bv">${disp}</div></div>`;
-  main.insertAdjacentHTML('beforeend',`<section class="panel" id="p-kpi">
-    <div class="ph"><div class="ey">07 · Indicadores clave</div><div class="pt">KPI Tracker</div></div>
-    <div class="hero-kpis"><div class="hc" style="background:linear-gradient(135deg,#163B54,#0E2A3D)"><div class="hl">🎯 Confirmación</div><div class="hv">${fp(k.tasa_conf)}</div><div class="hs">${k.confirmados} de ${k.total_recs}</div></div><div class="hc" style="background:linear-gradient(135deg,#C0392B,#922119)"><div class="hl">❌ Cancelación</div><div class="hv">${fp(k.tasa_canc)}</div><div class="hs">${k.cancelados} cancelados</div></div><div class="hc" style="background:linear-gradient(135deg,#2E8FB0,#1F6E8C)"><div class="hl">🚢 Share marítimo</div><div class="hv">${fp(k.share_mar)}</div><div class="hs">del FCL confirmado</div></div><div class="hc" style="background:linear-gradient(135deg,#E8A33D,#C77D1E)"><div class="hl">✈ Share aéreo</div><div class="hv">${fp(k.share_aer)}</div><div class="hs">del FCL confirmado</div></div><div class="hc" style="background:linear-gradient(135deg,#2E8B57,#1F6240)"><div class="hl">📄 Cobertura DAM</div><div class="hv">${fp(k.cob_dam)}</div><div class="hs">conf. con DAM</div></div></div>
-    <div class="g2"><div class="card"><div class="ct">Por status</div><div class="bars">${br('Confirmado',k.confirmados,k.total_recs,'#2E8FB0',k.confirmados)}${br('Proyectado',k.proyectados,k.total_recs,'#D7CDB0',k.proyectados)}${br('Cancelado',k.cancelados,k.total_recs,'#C0392B',k.cancelados)}</div></div><div class="card"><div class="ct">Share FCL</div><div class="bars">${br('Marítimo',k.share_mar,100,'#163B54',fp(k.share_mar))}${br('Aéreo',k.share_aer,100,'#2E8FB0',fp(k.share_aer))}${br('Terrestre',100-k.share_mar-k.share_aer,100,'#7A6FD0',fp(100-k.share_mar-k.share_aer))}</div></div></div>
-    <div class="card"><div class="ct">KPIs por modo</div><div class="tbl-wrap"><table class="std"><thead><tr><th>KPI</th><th style="text-align:right">Aéreo</th><th style="text-align:right">Marítimo</th><th style="text-align:right">Terrestre</th><th style="text-align:right">Total</th></tr></thead><tbody><tr><td>Registros conf.</td><td class="num">85</td><td class="num">86</td><td class="num">8</td><td class="num" style="font-weight:700">179</td></tr><tr><td>FCL confirmado</td><td class="num">${f1(ex.fcl_aereo)}</td><td class="num">${f1(ex.fcl_maritimo)}</td><td class="num">${f1(ex.fcl_terrestre)}</td><td class="num" style="font-weight:700">${f1(ex.total_fcl)}</td></tr><tr><td>DAMs únicas</td><td class="num">74</td><td class="num">38</td><td class="num">8</td><td class="num" style="font-weight:700">${ex.dam_unique}</td></tr></tbody></table></div></div>
-  </section>`);
-}
-
 // ══════════════════════════════════════════════════════════════
 // 08 DESTINOS & RUTAS
 // ══════════════════════════════════════════════════════════════
 function bUpload(){
   main.insertAdjacentHTML('beforeend',`<section class="panel" id="p-upload">
-    <div class="ph"><div class="ey">08 · Administración</div><div class="pt">Actualizar Datos</div><div class="ps">Sube el Excel más reciente para actualizar el dashboard directamente.</div></div>
+    <div class="ph"><div class="ey">07 · Administración</div><div class="pt">Actualizar Datos</div><div class="ps">Sube el Excel más reciente para actualizar el dashboard directamente.</div></div>
     <div class="card" style="max-width:560px;">
       <div class="ct">Subir HORIZON_FORECAST_2627_V1.xlsm</div>
       <label style="display:block;font-size:11px;font-weight:600;color:var(--mu);margin-bottom:4px;">Archivo Excel</label>
@@ -1375,7 +1363,7 @@ function bUpload(){
 }
 
 const UPLOAD_API = 'https://athena-api-pxm7.onrender.com/publish';
-const UPLOAD_API_KEY = 'hz-9f83jd83md-secret';
+const UPLOAD_API_KEY = 'CAMBIA_ESTA_CLAVE_POR_TU_API_KEY_DE_RENDER';
 function doUpload(){
   const inp=document.getElementById('upl-file');
   const statusEl=document.getElementById('upl-status');
@@ -1402,7 +1390,7 @@ function doUpload(){
     });
 }
 
-const BUILDERS = {forecast:bFcast, ports:bPorts, weekly:bWeekly, pmi:bPMI, air:bAir, execute:bExec, kpi:bKPI, upload:bUpload};
+const BUILDERS = {forecast:bFcast, ports:bPorts, weekly:bWeekly, pmi:bPMI, air:bAir, execute:bExec, upload:bUpload};
 VISIBLE_TABS.forEach(t => {
   try { BUILDERS[t.id](); }
   catch(e) {
