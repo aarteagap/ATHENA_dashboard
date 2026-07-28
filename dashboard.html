@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<title>AXIS Control Tower</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
 :root{--hull:#0E2A3D;--hull2:#163B54;--sky:#2E8FB0;--cargo:#E8A33D;--road:#7A6FD0;--paper:#F6F4EF;--card:#FFF;--line:#E2DED3;--ok:#2E8B57;--ok-bg:#E5F3EA;--warn:#C77D1E;--warn-bg:#FCEFDC;--bad:#C0392B;--bad-bg:#FBE5E1;--mu:#6B7280;--mu2:#9CA3AF;}
@@ -196,7 +197,7 @@ table.senasa tr.date-total:hover td,table.senasa tr.grand-total:hover td{backgro
 <div id="loginGate" style="position:fixed;inset:0;background:linear-gradient(135deg,#0E2A3D,#163B54);z-index:1000;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;">
   <div style="background:#fff;border-radius:16px;padding:40px 44px;max-width:380px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.35);text-align:center;">
     <div style="width:52px;height:52px;border-radius:12px;background:#2E8FB0;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;margin:0 auto 14px;">A</div>
-    <h1 style="font-size:19px;color:#0E2A3D;margin-bottom:4px;">ATHENA Control Tower</h1>
+    <h1 style="font-size:19px;color:#0E2A3D;margin-bottom:4px;">AXIS Control Tower</h1>
     <p style="font-size:12px;color:#6B7280;font-family:'Inter',sans-serif;margin-bottom:22px;">Ingresa con tu cuenta</p>
     <input type="email" id="loginEmail" placeholder="Correo" style="width:100%;padding:11px 14px;border-radius:8px;border:1px solid #E2DED3;font-size:13px;font-family:'Inter',sans-serif;margin-bottom:10px;box-sizing:border-box;">
     <input type="password" id="loginPwd" placeholder="Contraseña" style="width:100%;padding:11px 14px;border-radius:8px;border:1px solid #E2DED3;font-size:13px;font-family:'Inter',sans-serif;margin-bottom:10px;box-sizing:border-box;">
@@ -206,7 +207,7 @@ table.senasa tr.date-total:hover td,table.senasa tr.grand-total:hover td{backgro
 </div>
 <div class="topbar">
   <div class="ti">
-    <div class="brand"><div class="bm">A</div><div><h1>ATHENA Control Tower</h1><p>HORIZON_FORECAST_2627 · Exportación Multimodal <span id="lastUpdatedTag" style="color:#8FB8C9;"></span></p></div></div>
+    <div class="brand"><div class="bm">A</div><div><h1>AXIS Control Tower</h1><p>HORIZON_FORECAST_2627 · Exportación Multimodal <span id="lastUpdatedTag" style="color:#8FB8C9;"></span></p></div></div>
     <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#BFD9E5;display:flex;align-items:center;gap:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#2E8B57;box-shadow:0 0 5px #2E8B57;display:inline-block;"></span>483 registros · S20–S32</span>
   </div>
   <div class="tabs" id="tabBar"></div>
@@ -1363,7 +1364,7 @@ function bUpload(){
 }
 
 const UPLOAD_API = 'https://athena-api-pxm7.onrender.com/publish';
-const UPLOAD_API_KEY = 'hz-9f83jd83md-secret';
+const UPLOAD_API_KEY = 'CAMBIA_ESTA_CLAVE_POR_TU_API_KEY_DE_RENDER';
 function doUpload(){
   const inp=document.getElementById('upl-file');
   const statusEl=document.getElementById('upl-status');
