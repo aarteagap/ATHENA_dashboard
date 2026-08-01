@@ -405,14 +405,12 @@ function attachChart(sid,wks,metric){
     dot.addEventListener('mouseenter',()=>{
       const i=+dot.dataset.i,w=wks[i];
       const up=(w[kP]+w[kA])>=w[kC];const ac=up?'#2E8B57':'#C0392B';
-      const addLine = w[kAdd]>0?`<div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:3px;background:#2E8B57;flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">ADD</span><b style="font-family:'JetBrains Mono',monospace;">${f1(w[kAdd])} ${unitLbl}</b></div>`:'';
       const expoLine = w[kExpo]>0?`<div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:3px;background:#7A6FD0;flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">EXPO</span><b style="font-family:'JetBrains Mono',monospace;">${f1(w[kExpo])} ${unitLbl}</b></div>`:'';
-      const exaddLine = w[kExadd]>0?`<div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:3px;background:#C77D1E;flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">EXPOADD</span><b style="font-family:'JetBrains Mono',monospace;">${f1(w[kExadd])} ${unitLbl}</b></div>`:'';
       const cancLine = w[kCanc]>0?`<div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:3px;background:#C0392B;flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">Cancelados</span><b style="font-family:'JetBrains Mono',monospace;color:#C0392B;">${f1(w[kCanc])} ${unitLbl}</b></div>`:'';
       ttEl.innerHTML=`<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,.15);">${w.label}</div>
-        <div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:50%;background:#E8A33D;flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">Proyección</span><b style="font-family:'JetBrains Mono',monospace;">${f1(w[kP])} ${unitLbl}</b></div>
+        <div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:50%;background:#E8A33D;flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">PRE</span><b style="font-family:'JetBrains Mono',monospace;">${f1(w[kP])} ${unitLbl}</b></div>
         <div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:50%;background:#2E8FB0;flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">Confirmado</span><b style="font-family:'JetBrains Mono',monospace;">${f1(w[kC])} ${unitLbl}</b></div>
-        ${addLine}${expoLine}${exaddLine}${cancLine}
+        ${expoLine}${cancLine}
         ${w[kA]>0?`<div style="display:flex;gap:7px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:3px;background:${ac};flex-shrink:0;margin-top:2px;"></span><span style="flex:1;opacity:.85;">Total ADD+EXPOADD</span><b style="font-family:'JetBrains Mono',monospace;color:${ac};">${up?'▲':'▼'}${f1(w[kA])}</b></div>`:''}
         <div style="border-top:1px solid rgba(255,255,255,.15);margin-top:6px;padding-top:5px;display:flex;justify-content:space-between;"><span style="opacity:.8">% Ejec.</span><b style="font-family:'JetBrains Mono',monospace;">${w[kP]>0?fp(w[kC]/w[kP]*100):'—'}</b></div>`;
       ttEl.style.opacity='1';
@@ -500,7 +498,7 @@ function fcAggregate(rows,weeks){
   weeks.forEach(wk=>{byWeek[wk]={wk,label:`S${wk}`,fcl_conf:0,pal_conf:0,fcl_proj:0,pal_proj:0,fcl_add:0,pal_add:0,fcl_expo:0,pal_expo:0,fcl_exadd:0,pal_exadd:0,fcl_airadd:0,pal_airadd:0,fcl_cancelado:0,pal_cancelado:0};});
   rows.forEach(r=>{
     const b=byWeek[r.pack_plan];if(!b)return;
-    const isProj=r.is_pre;
+    const isProj=r.is_pre&&r.status!=='Cancelado';
     if(r.status==='Confirmado'){b.fcl_conf+=r.fcl;b.pal_conf+=r.pallets;}
     if(r.status==='Cancelado'){b.fcl_cancelado+=r.fcl;b.pal_cancelado+=r.pallets;}
     if(isProj){b.fcl_proj+=r.fcl;b.pal_proj+=r.pallets;}
