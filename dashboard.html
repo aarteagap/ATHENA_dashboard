@@ -452,6 +452,7 @@ function bFcast(){
     <div class="card" style="margin-bottom:14px;">
       <div class="ct">Filtro global <span class="sub" id="fc-stat"></span></div>
       <div class="filter-bar" style="align-items:flex-start;">
+        <span class="filter-tag">Status: Confirmado, Proyectado, Cancelado</span>
         <div class="fg">
           <label>Métrica</label>
           <div style="display:flex;gap:6px;">
@@ -498,7 +499,7 @@ function fcAggregate(rows,weeks){
   weeks.forEach(wk=>{byWeek[wk]={wk,label:`S${wk}`,fcl_conf:0,pal_conf:0,fcl_proj:0,pal_proj:0,fcl_add:0,pal_add:0,fcl_expo:0,pal_expo:0,fcl_exadd:0,pal_exadd:0,fcl_airadd:0,pal_airadd:0,fcl_cancelado:0,pal_cancelado:0};});
   rows.forEach(r=>{
     const b=byWeek[r.pack_plan];if(!b)return;
-    const isProj=r.is_pre&&r.status!=='Cancelado';
+    const isProj=r.is_pre;
     if(r.status==='Confirmado'){b.fcl_conf+=r.fcl;b.pal_conf+=r.pallets;}
     if(r.status==='Cancelado'){b.fcl_cancelado+=r.fcl;b.pal_cancelado+=r.pallets;}
     if(isProj){b.fcl_proj+=r.fcl;b.pal_proj+=r.pallets;}
