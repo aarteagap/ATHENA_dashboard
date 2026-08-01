@@ -476,7 +476,7 @@ function bFcast(){
     <div id="fc-kg"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;background:#F0F7FB;border:1px solid #C8DDE8;border-radius:10px;font-size:11px;"><b style="color:var(--sky);">Lógica 6W:</b><span><b>PRE</b> (o Status Confirmado/Cancelado) = proyección base (línea naranja)</span><span style="background:#E5F3EA;border-radius:4px;padding:1px 6px;color:#2E8B57;font-weight:700;font-size:10px;">▲ ADD/EXADD</span>proyección ≥ ejec.<span style="background:#FBE5E1;border-radius:4px;padding:1px 6px;color:#C0392B;font-weight:700;font-size:10px;">▼ ADD/EXADD</span>proyección &lt; ejec.</div>
     <div class="card"><div class="ct">Curva global <span class="sub">hover para detalle</span></div><div id="fc-chart-wrap" style="position:relative;max-width:900px;margin:0 auto;"></div><div style="display:flex;gap:14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);flex-wrap:wrap;"><div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mu);"><svg width="22" height="4"><line x1="0" y1="2" x2="22" y2="2" stroke="#2E8FB0" stroke-width="2.5"/></svg>Confirmado</div><div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mu);"><svg width="22" height="4"><line x1="0" y1="2" x2="22" y2="2" stroke="#E8A33D" stroke-width="2" stroke-dasharray="5 2"/></svg>Proyección</div></div></div>
-    <div class="card"><div class="ct">Desviación Confirmado vs Proyección</div><div class="tbl-wrap"><table class="std"><thead><tr><th>Semana</th><th style="text-align:right">Proyección</th><th style="text-align:right">ADD</th><th style="text-align:right">EXPO</th><th style="text-align:right">EXADD</th><th style="text-align:right">Total c/ADD+EXADD</th><th style="text-align:right">Confirmado</th><th style="text-align:right">Desviación</th><th>% Ejecución</th></tr></thead><tbody id="fc-dev-body"></tbody></table></div></div>
+    <div class="card"><div class="ct">Desviación Confirmado vs Proyección</div><div class="tbl-wrap"><table class="std"><thead><tr><th>Semana</th><th style="text-align:right">Proyección</th><th style="text-align:right">Adicionales</th><th style="text-align:right">Ejecutado (Confirmado)</th><th style="text-align:right">Desviación</th><th>% Ejecución</th><th style="text-align:right">% Back up Transporte</th></tr></thead><tbody id="fc-dev-body"></tbody></table></div></div>
     <div class="sec-title">📊 Proyección vs Ejecución por Modo</div>
     <div class="g2">
       <div class="card"><div class="ct">✈ Aéreo</div><div id="fc-wrap-air" style="position:relative;"></div></div>
@@ -500,7 +500,7 @@ function fcAggregate(rows,weeks){
   weeks.forEach(wk=>{byWeek[wk]={wk,label:`S${wk}`,fcl_conf:0,pal_conf:0,fcl_proj:0,pal_proj:0,fcl_add:0,pal_add:0,fcl_expo:0,pal_expo:0,fcl_exadd:0,pal_exadd:0,fcl_airadd:0,pal_airadd:0,fcl_cancelado:0,pal_cancelado:0};});
   rows.forEach(r=>{
     const b=byWeek[r.pack_plan];if(!b)return;
-    const isProj=r.is_pre||r.status==='Confirmado'||r.status==='Cancelado';
+    const isProj=r.is_pre;
     if(r.status==='Confirmado'){b.fcl_conf+=r.fcl;b.pal_conf+=r.pallets;}
     if(r.status==='Cancelado'){b.fcl_cancelado+=r.fcl;b.pal_cancelado+=r.pallets;}
     if(isProj){b.fcl_proj+=r.fcl;b.pal_proj+=r.pallets;}
@@ -539,11 +539,12 @@ function renderForecast(){
   const rows=wks.map(w=>{
     const hasC=w[kC]>0,ej=w[kP]>0?(w[kC]/w[kP]*100):0;
     const cl=hasC?(ej>=90?'ok':ej>=70?'warn':'bad'):'neu';
-    const up=(w[kP]+w[kA])>=w[kC];
     const dev=hasC?(w[kC]-w[kP]>=0?'+':'')+f1(w[kC]-w[kP]):'—';
-    return`<tr><td style="font-family:'JetBrains Mono',monospace;font-weight:600;">${w.label}</td><td class="num">${f1(w[kP])}</td><td class="num">${w[kAdd]>0?f1(w[kAdd]):'—'}</td><td class="num">${w[kExpo]>0?f1(w[kExpo]):'—'}</td><td class="num">${w[kExadd]>0?f1(w[kExadd]):'—'}</td><td class="num">${f1(w[kP]+w[kA])}${w[kA]>0?`<span class="addon ${up?'aup':'adn'}">${up?'▲':'▼'}${f1(w[kA])}</span>`:''}</td><td class="num" style="color:#2E8FB0;font-weight:600;">${hasC?f1(w[kC]):'—'}</td><td class="num" style="color:${hasC&&w[kC]<w[kP]?'var(--bad)':'var(--ok)'};font-weight:600;">${dev}</td><td><span class="pill ${cl}">${hasC?fp(ej):'Sin ejec.'}</span></td></tr>`;
+    const backupDenom=w[kExpo]+w[kExadd];
+    const backupPct=backupDenom>0?(w[kExadd]/backupDenom*100):null;
+    return`<tr><td style="font-family:'JetBrains Mono',monospace;font-weight:600;">${w.label}</td><td class="num" style="color:#E8A33D;font-weight:600;">${f1(w[kP])}</td><td class="num">${w[kA]>0?f1(w[kA]):'—'}</td><td class="num" style="color:#2E8FB0;font-weight:600;">${hasC?f1(w[kC]):'—'}</td><td class="num" style="color:${hasC&&w[kC]<w[kP]?'var(--bad)':'var(--ok)'};font-weight:600;">${dev}</td><td><span class="pill ${cl}">${hasC?fp(ej):'Sin ejec.'}</span></td><td class="num">${backupPct!==null?fp(backupPct):'—'}</td></tr>`;
   }).join('');
-  document.getElementById('fc-dev-body').innerHTML=rows||'<tr><td colspan="9" style="text-align:center;color:var(--mu);padding:16px;">Selecciona al menos un Pack Plan</td></tr>';
+  document.getElementById('fc-dev-body').innerHTML=rows||'<tr><td colspan="7" style="text-align:center;color:var(--mu);padding:16px;">Selecciona al menos un Pack Plan</td></tr>';
   const totalPPs=[...new Set(FORECAST_RAW.map(r=>r.pack_plan))].length;
   document.getElementById('fc-stat').textContent=`${wks.length} de ${totalPPs} semanas seleccionadas · métrica: ${unit}`;
   if(wks.length>1){
